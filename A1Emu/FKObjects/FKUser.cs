@@ -14,6 +14,8 @@ public class FKUser{
     //Password (SENT VIA PLAIN TEXT --- FK USES REALLY BAD SECURITY!!!)
     public string password;
     public int status;
+    public int isOnline;
     //Buddy List
+    public string[] rawBuddies;
     public List<FKUser> buddies;
 }

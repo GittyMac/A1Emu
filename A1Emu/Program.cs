@@ -43,17 +43,17 @@ class Program
         //});
         //t.Start();
 
-        var A1_Plugin0 = new ServerSystem(System.Net.IPAddress.Parse(ip), port, sqServer);
+        var A1_Plugin0 = new ServerSystem(System.Net.IPAddress.Parse(ip), port, sqServer, directory);
         A1_Plugin0.Start();
 
-        var A1_Plugin1 = new ServerUser(System.Net.IPAddress.Parse(ip), port + 1);
-        A1_Plugin1.Start();
+        //var A1_Plugin1 = new ServerUser(System.Net.IPAddress.Parse(ip), port + 1);
+        //A1_Plugin1.Start();
 
-        var A1_Plugin7 = new ServerGalaxy(System.Net.IPAddress.Parse(ip), port + 7);
-        A1_Plugin7.Start();
+        //var A1_Plugin7 = new ServerGalaxy(System.Net.IPAddress.Parse(ip), port + 7);
+        //A1_Plugin7.Start();
 
-        var A1_Plugin10 = new ServerTrunk(System.Net.IPAddress.Parse(ip), port + 10);
-        A1_Plugin10.Start();
+        //var A1_Plugin10 = new ServerTrunk(System.Net.IPAddress.Parse(ip), port + 10);
+        //A1_Plugin10.Start();
 
         Console.WriteLine("[A1Emu] Started!");
 
@@ -64,8 +64,8 @@ class Program
         }
 
         A1_Plugin0.Stop();
-        A1_Plugin1.Stop();
-        A1_Plugin7.Stop();
-        A1_Plugin10.Stop();
+        //A1_Plugin1.Stop();
+        //A1_Plugin7.Stop();
+        //A1_Plugin10.Stop();
     }
 }

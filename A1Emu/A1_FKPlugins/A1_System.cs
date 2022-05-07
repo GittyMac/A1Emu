@@ -23,7 +23,9 @@ class A1_System : TcpSession
 
         string sqServer = "";
 
-        public A1_System(TcpServer server, int port, string sqServerInput) : base(server){a1parser = new A1_Parser(); a1user = new FKUser(); sessionPort = port; sqServer = sqServerInput;}
+        string serverDirectory = "";
+
+        public A1_System(TcpServer server, int port, string sqServerInput, string directory) : base(server){a1parser = new A1_Parser(); a1user = new FKUser(); sessionPort = port; sqServer = sqServerInput; serverDirectory = directory;}
 
         protected override void OnReceived(byte[] buffer, long offset, long size)
         {
@@ -33,12 +35,17 @@ class A1_System : TcpSession
             bool isMultiOutput = false;
             string response = "";
 
+            if(a1user.buddies == null){
+                a1user.buddies = new List<FKUser>();
+            }
+
             string[] commands = a1parser.ParseReceivedMessage(message);
             foreach (string command in commands)
             {
                 string[] commandInfo = a1parser.ParseCommand(command);
                 switch (commandInfo[0])
                 {
+                    //Plugin 0 (Core)
                     case "a_lgu":
                         response += LoginGuestUser(commandInfo[1], commandInfo[2], commandInfo[3]).Remove(0, 1);
                         break;
@@ -53,6 +60,19 @@ class A1_System : TcpSession
                         break;
                     case "u_reg":
                         response += RegisterUser(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5], commandInfo[6], commandInfo[7]).Remove(0, 1);
+                        break;
+
+                    //Plugin 1 (User)
+                    case "u_gbl":
+                        response += GetBuddyList();
+                        break;
+                    case "u_ccs":
+                        response += ChangeChatStatus(commandInfo[1]);
+                        break;
+
+                    //Plugin 7 (Galaxy)
+                    case "lpv":
+                        response += LoadProfileVersion();
                         break;
                 }
             }
@@ -110,7 +130,7 @@ class A1_System : TcpSession
         string GetPluginDetails(string p){
             var responseStream = new MemoryStream();  
 
-            string serviceID = p;
+            string serviceID = "1";
 
             string xIPAddress = "localhost";
             string xPort = "80";
@@ -395,6 +415,141 @@ class A1_System : TcpSession
             return System.Text.ASCIIEncoding.UTF8.GetString(responseStream.ToArray());
         }
 
+        //PLUGIN 1 Commands
+        string GetBuddyList(){
+            var responseStream = new MemoryStream();
+            XmlWriterSettings settings = new XmlWriterSettings();
+            settings.OmitXmlDeclaration = true;
+            settings.ConformanceLevel = ConformanceLevel.Fragment;
+            using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+            {
+                writer.WriteStartElement("u_gbl");
+                writer.WriteAttributeString("r", "0");
+
+                string buddyList = "";
+
+                var con = new MySqlConnection(sqServer);  
+                string sql = "SELECT buddyList FROM user WHERE uID=@userID";
+                MySqlCommand sqCommand = new MySqlCommand(sql,con);
+                sqCommand.Parameters.AddWithValue("@userID", a1user.userID);
+                con.Open();
+                using (MySqlDataReader sqReader = sqCommand.ExecuteReader())
+                {
+                    while (sqReader.Read())
+                    {    
+                        buddyList = sqReader["buddyList"].ToString();
+                    }
+                    con.Close();
+                }   
+
+                a1user.rawBuddies = buddyList.Split(',');
+                foreach(string buddy in a1user.rawBuddies){
+                    var conB = new MySqlConnection(sqServer);  
+                    string sqlB = "SELECT * FROM user WHERE uID=@userID";
+                    MySqlCommand sqCommandB = new MySqlCommand(sqlB,conB);
+                    sqCommandB.Parameters.AddWithValue("@userID", buddy);
+                    conB.Open();
+                    using (MySqlDataReader sqReader = sqCommandB.ExecuteReader())
+                    {
+                        FKUser buddyUser = new FKUser();
+
+                        while (sqReader.Read())
+                        {    
+                            buddyUser.userID = Convert.ToInt32(buddy);
+                            buddyUser.username = sqReader["u"].ToString();
+                            buddyUser.isOnline = Convert.ToInt32(sqReader["isOnline"]);
+                            buddyUser.status = Convert.ToInt32(sqReader["phoneStatus"]);
+                        }
+
+                        writer.WriteStartElement("buddy");
+                        writer.WriteAttributeString("id", buddyUser.userID.ToString());
+                        writer.WriteAttributeString("n", buddyUser.username);
+                        writer.WriteAttributeString("s", buddyUser.isOnline.ToString());
+                        writer.WriteAttributeString("ph", buddyUser.status.ToString());
+                        writer.WriteEndElement();
+
+                        a1user.buddies.Add(buddyUser);
+
+                        conB.Close();
+                    }   
+                }
+
+                writer.WriteEndElement();
+                writer.Flush();
+                writer.Close();
+            }
+
+            return System.Text.ASCIIEncoding.UTF8.GetString(responseStream.ToArray());
+        }
+
+        string ChangeChatStatus(string s){
+            //Chat Statuses
+            //0 - Ready to Party
+            //1 - Do Not Disturb
+            //2 - Playing
+            //3 - Partying
+            var con = new MySqlConnection(sqServer);  
+            string sql1 = "UPDATE user SET isOnline = @ccs WHERE uID=@userID";
+            MySqlCommand sqCommand = new MySqlCommand(sql1,con);
+            sqCommand.Parameters.AddWithValue("@userID", a1user.userID);
+            sqCommand.Parameters.AddWithValue("@ccs", a1user.status);
+            con.Open();
+            sqCommand.ExecuteNonQuery();
+            con.Close();
+
+            var responseStream = new MemoryStream();
+            XmlWriterSettings settings = new XmlWriterSettings();
+            settings.OmitXmlDeclaration = true;
+            settings.ConformanceLevel = ConformanceLevel.Fragment;
+            using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+            {
+                writer.WriteStartElement("u_ccs");
+
+                //Status
+                writer.WriteAttributeString("s", a1user.status.ToString());
+
+                writer.WriteAttributeString("id", a1user.userID.ToString());
+
+                writer.WriteEndElement();
+                writer.Flush();
+                writer.Close();
+            }
+
+            return System.Text.ASCIIEncoding.UTF8.GetString(responseStream.ToArray());
+        }
+
+
+
+        //PLUGIN 7 Commands
+
+        string LoadProfileVersion(){
+            var responseStream = new MemoryStream();
+            XmlWriterSettings settings = new XmlWriterSettings();
+            settings.OmitXmlDeclaration = true;
+            settings.ConformanceLevel = ConformanceLevel.Fragment;
+            using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+            {
+                writer.WriteStartElement("h7_0");
+                writer.WriteStartElement("lpv");
+
+                //Save ID/Version
+                if(File.Exists(serverDirectory + a1user.username + @"/profile")){
+                    XmlDocument xmlDocument = new XmlDocument();
+                    xmlDocument.LoadXml(File.ReadAllText(serverDirectory + a1user.username + @"/profile"));
+                    XmlElement root = xmlDocument.DocumentElement;
+                    string saveID = root.GetAttribute("sid");
+                    writer.WriteAttributeString("v", saveID.ToString());
+                }
+
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+                writer.Flush();
+                writer.Close();
+            }
+
+            return System.Text.ASCIIEncoding.UTF8.GetString(responseStream.ToArray());
+        } 
+
         protected override void OnConnected()
         {
             Console.WriteLine($"[0 - System] TCP session with Id {Id} connected!");
@@ -418,9 +573,11 @@ class ServerSystem : TcpServer
 
     string sqServer = "";
 
-    public ServerSystem(IPAddress address, int port, string sqServerInput) : base(address, port) {serverPort = port; sqServer = sqServerInput;}
+    string serverDirectory = "";
 
-    protected override TcpSession CreateSession() { return new A1_System(this, serverPort, sqServer); }
+    public ServerSystem(IPAddress address, int port, string sqServerInput, string directory) : base(address, port) {serverPort = port; sqServer = sqServerInput; serverDirectory = directory;}
+
+    protected override TcpSession CreateSession() { return new A1_System(this, serverPort, sqServer, serverDirectory); }
 
     protected override void OnError(SocketError error)
     {
