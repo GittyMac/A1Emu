@@ -33,7 +33,8 @@ class A1_System : TcpSession
             Console.WriteLine("[0 - System] Recieved: " + message);
 
             bool isMultiOutput = false;
-            string response = "";
+
+            List<string> responses = new List<string>();
 
             if(a1user.buddies == null){
                 a1user.buddies = new List<FKUser>();
@@ -47,49 +48,47 @@ class A1_System : TcpSession
                 {
                     //Plugin 0 (Core)
                     case "a_lgu":
-                        response += LoginGuestUser(commandInfo[1], commandInfo[2], commandInfo[3]).Remove(0, 1);
+                        responses.Add(LoginGuestUser(commandInfo[1], commandInfo[2], commandInfo[3]).Remove(0, 1));
                         break;
                     case "a_gpd":
-                        response += GetPluginDetails(commandInfo[1]).Remove(0, 1);
+                        responses.Add(GetPluginDetails(commandInfo[1]).Remove(0, 1));
                         break;
                     case "a_gsd":
-                        response += GetServiceDetails(commandInfo[1]).Remove(0, 1);
+                        responses.Add(GetServiceDetails(commandInfo[1]).Remove(0, 1));
                         break;
                     case "a_lru":
-                        response += LoginRegisteredUser(commandInfo[1], commandInfo[2], commandInfo[3]).Remove(0, 1);
+                        responses.Add(LoginRegisteredUser(commandInfo[1], commandInfo[2], commandInfo[3]).Remove(0, 1));
                         break;
                     case "u_reg":
-                        response += RegisterUser(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5], commandInfo[6], commandInfo[7]).Remove(0, 1);
+                        responses.Add(RegisterUser(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5], commandInfo[6], commandInfo[7]).Remove(0, 1));
                         break;
 
                     //Plugin 1 (User)
                     case "u_gbl":
-                        response += GetBuddyList();
+                        responses.Add(GetBuddyList());
                         break;
                     case "u_ccs":
-                        response += ChangeChatStatus(commandInfo[1]);
+                        responses.Add(ChangeChatStatus(commandInfo[1]));
                         break;
 
                     //Plugin 7 (Galaxy)
                     case "lpv":
-                        response += LoadProfileVersion();
+                        responses.Add(LoadProfileVersion());
                         break;
                 }
             }
 
-
-            Console.WriteLine(response);
-
-            //Message Output
-            List<byte[]> d = new List<byte[]>();
-            Byte[] reply = Encoding.ASCII.GetBytes(response);
-            byte[] b2 = new byte[] {0x00};
-            d.Add(reply);
-            d.Add(b2);
-            byte[] b3 = d.SelectMany(a => a).ToArray();
-            if(!isMultiOutput)
-                SendAsync(b3, 0, b3.Length);
-            else Server.Multicast(b3,0,b3.Length); SendAsync(b3,0,b3.Length);
+            foreach(string responseString in responses){
+                List<byte[]> d = new List<byte[]>();
+                Byte[] reply = Encoding.ASCII.GetBytes(responseString);
+                byte[] b2 = new byte[] {0x00};
+                d.Add(reply);
+                d.Add(b2);
+                byte[] b3 = d.SelectMany(a => a).ToArray();
+                if(!isMultiOutput)
+                    SendAsync(b3, 0, b3.Length);
+                else Server.Multicast(b3,0,b3.Length); SendAsync(b3,0,b3.Length);
+            }
 
             // Multicast message to all connected sessions
             //Server.Multicast(message);
@@ -132,29 +131,29 @@ class A1_System : TcpSession
 
             string serviceID = "1";
 
-            string xIPAddress = "localhost";
+            string xIPAddress = "127.0.0.1";
             string xPort = "80";
 
-            string bIPAddress = "localhost";
+            string bIPAddress = "127.0.0.1";
             string bPort = "80";
             
             switch(p){
                 //User
                 case "1":
-                    xPort = (sessionPort + 1).ToString();
-                    bPort = (sessionPort + 1).ToString();
+                    xPort = (sessionPort).ToString();
+                    bPort = (sessionPort).ToString();
                     break;
 
                 //Galaxy
                 case "7":
-                    xPort = (sessionPort + 7).ToString();
-                    bPort = (sessionPort + 7).ToString();
+                    xPort = (sessionPort).ToString();
+                    bPort = (sessionPort).ToString();
                     break;
 
                 //Trunk
                 case "10":
-                    xPort = (sessionPort + 10).ToString();
-                    bPort = (sessionPort + 10).ToString();
+                    xPort = (sessionPort).ToString();
+                    bPort = (sessionPort).ToString();
                     break;
             }
             
@@ -165,7 +164,7 @@ class A1_System : TcpSession
             {      
                 writer.WriteStartElement("a_gpd");
 
-                //Service ID
+                //Server ID
                 writer.WriteAttributeString("s", serviceID);
 
                 //xIPAddress
@@ -194,31 +193,31 @@ class A1_System : TcpSession
         {
             var responseStream = new MemoryStream();
 
-            string serviceID = s;
+            string serviceID = "1";
 
-            string xIPAddress = "localhost";
+            string xIPAddress = "127.0.0.1";
             string xPort = "80";
 
-            string bIPAddress = "localhost";
+            string bIPAddress = "127.0.0.1";
             string bPort = "80";
 
             switch(s){
                 //User
                 case "1":
-                    xPort = (sessionPort + 1).ToString();
-                    bPort = (sessionPort + 1).ToString();
+                    xPort = (sessionPort).ToString();
+                    bPort = (sessionPort).ToString();
                     break;
 
                 //Galaxy
                 case "7":
-                    xPort = (sessionPort + 7).ToString();
-                    bPort = (sessionPort + 7).ToString();
+                    xPort = (sessionPort).ToString();
+                    bPort = (sessionPort).ToString();
                     break;
 
                 //Trunk
                 case "10":
-                    xPort = (sessionPort + 10).ToString();
-                    bPort = (sessionPort + 10).ToString();
+                    xPort = (sessionPort).ToString();
+                    bPort = (sessionPort).ToString();
                     break;
             }
 
@@ -527,6 +526,7 @@ class A1_System : TcpSession
             XmlWriterSettings settings = new XmlWriterSettings();
             settings.OmitXmlDeclaration = true;
             settings.ConformanceLevel = ConformanceLevel.Fragment;
+            settings.Encoding = Encoding.ASCII;
             using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
             {
                 writer.WriteStartElement("h7_0");
@@ -547,7 +547,7 @@ class A1_System : TcpSession
                 writer.Close();
             }
 
-            return System.Text.ASCIIEncoding.UTF8.GetString(responseStream.ToArray());
+            return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
         } 
 
         protected override void OnConnected()
