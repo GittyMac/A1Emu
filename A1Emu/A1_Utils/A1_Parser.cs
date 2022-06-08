@@ -14,8 +14,6 @@ using System.Xml.Linq;
 public class A1_Parser { 
 
    public string[] ParseReceivedMessage(string xmlCommand){
-      //TODO - RoutingStrings (#x|x|x|x)
-
       List<string> commandsList = new List<string>();
 
       //Splits raw commands by the null character placed in between. To parse Routing Strings.
