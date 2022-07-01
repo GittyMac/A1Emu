@@ -6,8 +6,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Security.Cryptography;
-using MySqlConnector;
 using System.Xml;
+using MySqlConnector;
 using NetCoreServer;
 
 //ArkONE Plugin 0
@@ -25,17 +25,26 @@ class A1_System : TcpSession
 
         string serverDirectory = "";
 
-        public A1_System(TcpServer server, int port, string sqServerInput, string directory) : base(server){a1parser = new A1_Parser(); a1user = new FKUser(); sessionPort = port; sqServer = sqServerInput; serverDirectory = directory;}
+        int chunksLeft = 0;
+
+        string saveData = "";
+
+        public A1_System(TcpServer server, int port, string sqServerInput, string directory) : base(server)
+        {
+            a1parser = new A1_Parser(); 
+            a1user = new FKUser(); 
+            sessionPort = port; sqServer = sqServerInput; 
+            serverDirectory = directory;
+        }
 
         protected override void OnReceived(byte[] buffer, long offset, long size)
         {
             string message = Encoding.ASCII.GetString(buffer, (int)offset, (int)size - 1);
-            Console.WriteLine("[0 - System] Recieved: " + message);
-
-            bool isMultiOutput = false;
+            Console.WriteLine("[0 - System - " + this.Id + "] Recieved: " + message);
 
             List<string> responses = new List<string>();
 
+            //Initializes a buddy list if null.
             if(a1user.buddies == null){
                 a1user.buddies = new List<FKUser>();
             }
@@ -54,7 +63,7 @@ class A1_System : TcpSession
                         responses.Add(GetPluginDetails(commandInfo[1]).Remove(0, 1));
                         break;
                     case "a_gsd":
-                        responses.Add(GetServiceDetails(commandInfo[1]).Remove(0, 1));
+                        responses.Add(GetServerDetails(commandInfo[1]).Remove(0, 1));
                         break;
                     case "a_lru":
                         responses.Add(LoginRegisteredUser(commandInfo[1], commandInfo[2], commandInfo[3]).Remove(0, 1));
@@ -75,24 +84,40 @@ class A1_System : TcpSession
                     case "lpv":
                         responses.Add(LoadProfileVersion());
                         break;
+                    case "vsu":
+                        responses.Add(VersionStatisticsRequest(commandInfo[1]));
+                        break;
+                    case "sp":
+                        responses.Add(SaveProfile(commandInfo[1]));
+                        break;
+                    case "spp":
+                        responses.Add(SaveProfilePart(commandInfo[1], commandInfo[2]));
+                        break;
+
+                    default:
+                        responses.Add(@"<unknown />");
+                        break;
                 }
             }
 
             foreach(string responseString in responses){
+                //Formats the reponse to send.
                 List<byte[]> d = new List<byte[]>();
                 Byte[] reply = Encoding.ASCII.GetBytes(responseString);
                 byte[] b2 = new byte[] {0x00};
                 d.Add(reply);
                 d.Add(b2);
                 byte[] b3 = d.SelectMany(a => a).ToArray();
-                if(!isMultiOutput)
-                    SendAsync(b3, 0, b3.Length);
-                else Server.Multicast(b3,0,b3.Length); SendAsync(b3,0,b3.Length);
-            }
 
-            // Multicast message to all connected sessions
-            //Server.Multicast(message);
+                Send(b3, 0, b3.Length);
+            }
         }
+
+        //========
+        //Commands
+        //========
+
+        //Plugin 0
 
         string LoginGuestUser(string d, string a, string c){
             var responseStream = new MemoryStream();    
@@ -129,12 +154,12 @@ class A1_System : TcpSession
         string GetPluginDetails(string p){
             var responseStream = new MemoryStream();  
 
-            string serviceID = "1";
+            string serverID = "1";
 
-            string xIPAddress = "127.0.0.1";
+            string xIPAddress = "localhost";
             string xPort = "80";
 
-            string bIPAddress = "127.0.0.1";
+            string bIPAddress = "localhost";
             string bPort = "80";
             
             switch(p){
@@ -165,7 +190,7 @@ class A1_System : TcpSession
                 writer.WriteStartElement("a_gpd");
 
                 //Server ID
-                writer.WriteAttributeString("s", serviceID);
+                writer.WriteAttributeString("s", serverID);
 
                 //xIPAddress
                 writer.WriteAttributeString("xi", xIPAddress);
@@ -189,16 +214,16 @@ class A1_System : TcpSession
             return System.Text.ASCIIEncoding.UTF8.GetString(responseStream.ToArray());
         }
 
-        string GetServiceDetails(string s)
+        string GetServerDetails(string s)
         {
             var responseStream = new MemoryStream();
 
-            string serviceID = "1";
+            string serverID = "1";
 
-            string xIPAddress = "127.0.0.1";
+            string xIPAddress = "localhost";
             string xPort = "80";
 
-            string bIPAddress = "127.0.0.1";
+            string bIPAddress = "localhost";
             string bPort = "80";
 
             switch(s){
@@ -228,8 +253,8 @@ class A1_System : TcpSession
             {
                 writer.WriteStartElement("a_gsd");
 
-                //Service ID
-                writer.WriteAttributeString("s", serviceID);
+                //Server ID
+                writer.WriteAttributeString("s", serverID);
 
                 //xIPAddress
                 writer.WriteAttributeString("xi", xIPAddress);
@@ -258,6 +283,7 @@ class A1_System : TcpSession
             int resultCode = 0;
 
             //Making the password more secure.
+            //TODO - Find an alternative to the obsolete RNGCryptoServiceProvider.
             byte[] salt;
             new RNGCryptoServiceProvider().GetBytes(salt = new byte[16]);
             var encryptedP = new Rfc2898DeriveBytes(p,salt,10000);
@@ -548,6 +574,95 @@ class A1_System : TcpSession
             }
 
             return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+        }
+
+        string VersionStatisticsRequest(string id){
+            var responseStream = new MemoryStream();
+            XmlWriterSettings settings = new XmlWriterSettings();
+            settings.OmitXmlDeclaration = true;
+            settings.ConformanceLevel = ConformanceLevel.Fragment;
+            settings.Encoding = Encoding.ASCII;
+            using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+            {
+                writer.WriteStartElement("h7_0");
+                writer.WriteStartElement("vsu");
+
+                writer.WriteAttributeString("id", "0");
+
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+                writer.Flush();
+                writer.Close();
+            }
+
+            return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+        } 
+
+        string SaveProfile(string c){
+            var responseStream = new MemoryStream();
+            XmlWriterSettings settings = new XmlWriterSettings();
+            settings.OmitXmlDeclaration = true;
+            settings.ConformanceLevel = ConformanceLevel.Fragment;
+            settings.Encoding = Encoding.ASCII;
+
+            //Gets the number of chunks to save.
+            chunksLeft = int.Parse(c);
+
+            using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+            {
+                writer.WriteStartElement("h7_0");
+                writer.WriteStartElement("rr");
+
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+                writer.Flush();
+                writer.Close();
+            }
+
+            return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+        } 
+
+        string SaveProfilePart(string v, string n){
+            var responseStream = new MemoryStream();
+            XmlWriterSettings settings = new XmlWriterSettings();
+            settings.OmitXmlDeclaration = true;
+            settings.ConformanceLevel = ConformanceLevel.Fragment;
+            settings.Encoding = Encoding.ASCII;
+
+            using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+            {
+                writer.WriteStartElement("h7_0");
+
+                saveData = v + saveData;
+
+                if(chunksLeft == 1){
+                    writer.WriteStartElement("sp");
+
+                    saveData = WebUtility.HtmlDecode(saveData);
+
+                    XmlDocument save = new XmlDocument();
+                    save.LoadXml(saveData);
+                    XmlElement rootSave = save.DocumentElement;
+
+                    string profileName = rootSave.GetAttribute("gname");
+                    writer.WriteAttributeString("v", (int.Parse(rootSave.GetAttribute("sid")) + 1).ToString());
+
+                    if(!Directory.Exists(serverDirectory + profileName)){
+                        Directory.CreateDirectory(serverDirectory + profileName);
+                    }
+                    File.WriteAllText(serverDirectory + profileName + @"/profile", saveData);
+                }else{
+                    writer.WriteStartElement("rr");
+                    chunksLeft -= 1;
+                }
+
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+                writer.Flush();
+                writer.Close();
+            }
+
+            return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
         } 
 
         protected override void OnConnected()
@@ -575,7 +690,14 @@ class ServerSystem : TcpServer
 
     string serverDirectory = "";
 
-    public ServerSystem(IPAddress address, int port, string sqServerInput, string directory) : base(address, port) {serverPort = port; sqServer = sqServerInput; serverDirectory = directory;}
+    public ServerSystem(IPAddress address, int port, string sqServerInput, string directory) : base(address, port) 
+    {
+        serverPort = port; 
+        sqServer = sqServerInput; 
+        serverDirectory = directory; 
+        this.OptionReceiveBufferSize = 51200; //FK sends very large packets for saves, bigger than the NCS default of 8192.
+        this.OptionKeepAlive = true;
+    }
 
     protected override TcpSession CreateSession() { return new A1_System(this, serverPort, sqServer, serverDirectory); }
 
