@@ -96,6 +96,9 @@ class A1_System : TcpSession
                     case "lp":
                         responses.Add(LoadProfile());
                         break;
+                    case "gls":
+                        responses.Add(GetLeaderboardStats(commandInfo[1]));
+                        break;
 
 
                     default:
@@ -693,6 +696,65 @@ class A1_System : TcpSession
 
             return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
         }
+
+        string GetLeaderboardStats(string id){
+            //TODO - When we get multiplayer working, get Most Played (MULTI) added.
+
+            var responseStream = new MemoryStream();
+            XmlWriterSettings settings = new XmlWriterSettings();
+            settings.OmitXmlDeclaration = true;
+            settings.ConformanceLevel = ConformanceLevel.Fragment;
+            settings.Encoding = Encoding.ASCII;
+
+            int category = int.Parse(id);
+
+
+            using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+            {
+                writer.WriteStartElement("h7_0");
+
+                writer.WriteStartElement("gls");
+                writer.WriteAttributeString("id", category.ToString());
+
+                writer.WriteStartElement("records");
+                writer.WriteAttributeString("id", category.ToString());
+
+                XmlDocument profile = new XmlDocument();
+                profile.Load(serverDirectory + a1user.username + @"/profile");
+                switch(category){
+                    case 1:
+                        var gameNodes = profile.SelectNodes("/profile/statistics/games/game");
+                        foreach (XmlNode node in gameNodes)
+                        {
+                            writer.WriteStartElement("record");
+                            writer.WriteAttributeString("id", node.Attributes["id"].Value);
+                            writer.WriteAttributeString("sp", node.Attributes["count"].Value);
+
+                            writer.WriteEndElement();
+                        }
+                        break;
+                    case 2:
+
+                        var itemNodes = profile.SelectNodes("/profile/menu/items/item");
+                        foreach (XmlNode node in itemNodes)
+                        {
+                            writer.WriteStartElement("record");
+                            writer.WriteAttributeString("id", node.Attributes["id"].Value);
+                            writer.WriteAttributeString("c", node.Attributes["total"].Value);
+                            writer.WriteEndElement();
+                        }
+                        break;
+                }
+
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+                writer.Flush();
+                writer.Close();
+            }
+
+            return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+        } 
 
         protected override void OnConnected()
         {
