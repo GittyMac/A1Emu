@@ -93,6 +93,10 @@ class A1_System : TcpSession
                     case "spp":
                         responses.Add(SaveProfilePart(commandInfo[1], commandInfo[2]));
                         break;
+                    case "lp":
+                        responses.Add(LoadProfile());
+                        break;
+
 
                     default:
                         responses.Add(@"<unknown />");
@@ -109,6 +113,7 @@ class A1_System : TcpSession
                 d.Add(b2);
                 byte[] b3 = d.SelectMany(a => a).ToArray();
 
+                Console.WriteLine(responseString);
                 Send(b3, 0, b3.Length);
             }
         }
@@ -608,6 +613,9 @@ class A1_System : TcpSession
             //Gets the number of chunks to save.
             chunksLeft = int.Parse(c);
 
+            saveData = "";
+
+
             using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
             {
                 writer.WriteStartElement("h7_0");
@@ -664,6 +672,27 @@ class A1_System : TcpSession
 
             return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
         } 
+
+        string LoadProfile(){
+            var responseStream = new MemoryStream();
+            XmlWriterSettings settings = new XmlWriterSettings();
+            settings.OmitXmlDeclaration = true;
+            settings.ConformanceLevel = ConformanceLevel.Fragment;
+            settings.Encoding = Encoding.ASCII;
+
+            using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+            {
+                writer.WriteStartElement("h7_0");
+
+                writer.WriteRaw(File.ReadAllText(serverDirectory + a1user.username + @"/profile"));
+
+                writer.WriteEndElement();
+                writer.Flush();
+                writer.Close();
+            }
+
+            return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+        }
 
         protected override void OnConnected()
         {
