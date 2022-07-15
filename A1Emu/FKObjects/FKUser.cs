@@ -24,8 +24,10 @@ public class FKUser
     //3 - Partying
     public int status;
 
+    //If the user owns a phone.
+    public int phoneStatus;
+
     //If the user is online.
-    //TODO - See if this is set by the game.
     public int isOnline;
 
     //Buddy Lists
