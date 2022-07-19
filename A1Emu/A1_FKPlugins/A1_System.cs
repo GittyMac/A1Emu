@@ -122,6 +122,10 @@ class A1_System : TcpSession
                     responses.Add(GetLeaderboardStats(commandInfo[1]));
                     break;
 
+                // ----------------------- Multiplayer (Shared by all) ---------------------- \\
+                case "jn":
+                    break;
+
 
                 default:
                     responses.Add(@"<unknown />");
@@ -982,12 +986,7 @@ class A1_System : TcpSession
         {
             writer.WriteStartElement("u_dbd");
 
-            if (buddy.isOnline == 0)
-            {
-                writer.WriteAttributeString("r", "5");
-                fail = true;
-            }
-            else if (buddy.username == null || buddy.username == "GUESTUSER")
+            if (buddy.username == null || buddy.username == "GUESTUSER")
             {
                 writer.WriteAttributeString("r", "2");
                 fail = true;
@@ -1020,7 +1019,12 @@ class A1_System : TcpSession
                 writer1.Flush();
                 writer1.Close();
             }
-            a1_Sender.SendToUser(this.Server, buddy.connectionID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
+
+            if (buddy.isOnline == 1)
+            {
+                a1_Sender.SendToUser(this.Server, buddy.connectionID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
+            }
+
 
             var buddyList = new List<string>(a1_User.rawBuddies);
             buddyList.Remove(buddy.userID.ToString());
@@ -1105,6 +1109,11 @@ class A1_System : TcpSession
 
         return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
     }
+
+    // -------------------------------------------------------------------------- \\
+    //                               Plugin 2 - Chat                              \\
+    // -------------------------------------------------------------------------- \\
+
 
     // -------------------------------------------------------------------------- \\
     //                              Plugin 7 - Galaxy                             \\
