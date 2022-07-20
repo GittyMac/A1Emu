@@ -53,6 +53,19 @@ public class A1_Parser
             commandInfo.Add(value);
         }
 
+        //Allows parsing of descendant elements.
+        foreach(XElement element in commandRoot.Descendants()){
+            var desAttrNames = (
+                from a in element.Attributes()
+                select a.Value
+            );
+
+            foreach (string value in desAttrNames)
+            {
+                commandInfo.Add(value);
+            }
+        }
+
         if (routingString != "")
         {
             string[] routingData = routingString.Split("|");
@@ -63,6 +76,31 @@ public class A1_Parser
         }
 
         return commandInfo.ToArray();
+    }
+
+    //Gets the Routing String from the command.
+    public string[] ParseRoutingStrings(string command)
+    {
+
+        List<string> routeInfo = new List<string>();
+        string routingString = "";
+
+        if (command.EndsWith("#"))
+        {
+            routingString = command.Substring(command.LastIndexOf(">") + 1, command.LastIndexOf("#") - command.LastIndexOf(">") - 1);
+            command = command.Substring(0, command.LastIndexOf(">") + 1);
+        }
+
+        if (routingString != "")
+        {
+            string[] routingData = routingString.Split("|");
+            foreach (string routeID in routingData)
+            {
+                routeInfo.Add(routeID);
+            }
+        }
+
+        return routeInfo.ToArray();
     }
 
 }
