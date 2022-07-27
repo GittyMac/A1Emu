@@ -34,6 +34,7 @@ class A1_System : TcpSession
     string opponentConID = "";
     int opponentUID = 0;
     int teamSide = 5;
+    int roundCount = 0;
 
     public A1_System(TcpServer server, int port, string sqServerInput, string directory) : base(server)
     {
@@ -112,7 +113,10 @@ class A1_System : TcpSession
 
                 // ---------------------------- Plugin 5 (Soccer) --------------------------- \\
                 case "cm":
-                    //responses.Add(CharacterMove(commandInfo[1], commandInfo[2], commandInfo[3]));
+                    responses.Add(CharacterMove(commandInfo[1], commandInfo[2], commandInfo[3]));
+                    break;
+                case "bs":
+                    responses.Add(BlockShot(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5]));
                     break;
 
                 // ---------------------------- Plugin 7 (Galaxy) --------------------------- \\
@@ -123,7 +127,10 @@ class A1_System : TcpSession
                     responses.Add(VersionStatisticsRequest(commandInfo[1]));
                     break;
                 case "sp":
-                    responses.Add(SaveProfile(commandInfo[1]));
+                    if(routingString[1] == "7")
+                        responses.Add(SaveProfile(commandInfo[1]));
+                    else if(routingString[1] == "5")
+                        responses.Add(ShotParameters(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5]));
                     break;
                 case "spp":
                     responses.Add(SaveProfilePart(commandInfo[1], commandInfo[2]));
@@ -153,6 +160,10 @@ class A1_System : TcpSession
                     
                 case "rp":
                     responses.Add(ReadyPlay(commandInfo[1], routingString[1]));
+                    break;
+                
+                case "ms":
+                    responses.Add(MessageOpponent(commandInfo[1], commandInfo[2], routingString[1]));
                     break;
 
                 default:
@@ -1345,6 +1356,7 @@ class A1_System : TcpSession
 
         int challenge = 0;
         int challenger = 0;
+        teamSide = 5;
 
         var con = new MySqlConnection(sqServer);
         string sql = "SELECT * FROM mp_5 WHERE userID=@userID";
@@ -1505,35 +1517,84 @@ class A1_System : TcpSession
         settings.Encoding = Encoding.ASCII;
         using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
         {
+            bool isStartingGame = teamSide == 5;
 
             writer.WriteStartElement("h" + plugin + "_0");
 
             if(plugin == "5")
             {   
                 writer.WriteStartElement("oc");
-                if(a1_User.userID < opponentUID)
+                if(teamSide == 5)
                 {
-                    writer.WriteAttributeString("c", "0");
-                }else
-                {
-                    writer.WriteAttributeString("c", "1");
+                    if(a1_User.userID < opponentUID)
+                    {
+                        teamSide = 0;
+                        writer.WriteAttributeString("c", "0");
+                    }else{   
+                        teamSide = 1;
+                        writer.WriteAttributeString("c", "1");
+                    }
+                }else{
+                    if(roundCount % 5 == 0)
+                    {
+                        switch(teamSide)
+                        {
+                            case 0:
+                                teamSide = 1;
+                                writer.WriteAttributeString("c", "1");
+                                break;
+                            case 1:
+                                teamSide = 0;
+                                writer.WriteAttributeString("c", "0");
+                                break;
+                        }
+                    }else
+                    {
+                        switch(teamSide)
+                        {
+                            case 0:
+                                writer.WriteAttributeString("c", "0");
+                                break;
+                            case 1:
+                                writer.WriteAttributeString("c", "1");
+                                break;
+                        }
+                    }
                 }
                 writer.WriteEndElement();
 
                 writer.WriteStartElement("cc");
-                if(a1_User.userID < opponentUID)
+                if(teamSide == 5)
                 {
-                    writer.WriteAttributeString("c", "0");
-                }else
-                {
-                    writer.WriteAttributeString("c", "1");
+                    if(a1_User.userID < opponentUID)
+                    {
+                        writer.WriteAttributeString("c", "1");
+                    }else
+                    {
+                        writer.WriteAttributeString("c", "0");
+                    }
+                }else{
+                    switch(teamSide)
+                    {
+                        case 0:
+                            writer.WriteAttributeString("c", "0");
+                            break;
+                        case 1:
+                            writer.WriteAttributeString("c", "1");
+                            break;
+                    }
                 }
                 writer.WriteEndElement();
                 writer.WriteStartElement("nr");
                 writer.WriteEndElement();
 
-                writer.WriteStartElement("sg");
-                writer.WriteEndElement();
+                if(isStartingGame)
+                {
+                    writer.WriteStartElement("sg");
+                    writer.WriteEndElement();              
+                }
+
+                roundCount += 1;
             }
 
             writer.WriteEndElement();
@@ -1561,10 +1622,147 @@ class A1_System : TcpSession
             System.Threading.Thread.Sleep(500);
         }
 
+        string sql2 = "UPDATE mp_5 SET ready = @r WHERE userID=@userID";
+        MySqlCommand sqCommand2 = new MySqlCommand(sql2, con);
+        sqCommand2.Parameters.AddWithValue("@r", 0);
+        sqCommand2.Parameters.AddWithValue("@userID", a1_User.userID);
+        con.Open();
+        sqCommand2.ExecuteNonQuery();
+        con.Close();
 
         return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
     }
     
+    string MessageOpponent(string m, string bid, string plugin)
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h" + plugin + "_0");
+            writer.WriteStartElement("ms");
+
+            writer.WriteAttributeString("n", a1_User.username);
+            writer.WriteAttributeString("m", m);
+
+            writer.WriteAttributeString("bid", bid);
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+
+        return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+    }
+
+    // -------------------------------------------------------------------------- \\
+    //                              Plugin 5 - Soccer                             \\
+    // -------------------------------------------------------------------------- \\
+
+    string CharacterMove(string x, string d, string bid)
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h5_0");
+
+            writer.WriteStartElement("cm");
+
+            writer.WriteAttributeString("x", x);
+
+            writer.WriteAttributeString("d", d);
+
+            writer.WriteAttributeString("bid", bid);
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+
+        return "<notneeded/>";
+    }
+
+    string ShotParameters(string p, string z, string y, string x, string bid)
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h5_0");
+
+            writer.WriteStartElement("sp");
+
+            writer.WriteAttributeString("p", p);
+
+            writer.WriteAttributeString("z", z);
+
+            writer.WriteAttributeString("y", y);
+
+            writer.WriteAttributeString("x", x);
+
+            writer.WriteAttributeString("bid", bid);
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+
+        return "<notneeded/>";
+    }
+
+    string BlockShot(string d, string lx, string m, string c, string bid)
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h5_0");
+
+            writer.WriteStartElement("bs");
+
+            writer.WriteAttributeString("d", d);
+
+            writer.WriteAttributeString("lx", lx);
+
+            writer.WriteAttributeString("m", m);
+
+            writer.WriteAttributeString("c", c);
+
+            writer.WriteAttributeString("bid", bid);
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+
+        return "<notneeded/>";
+    }
+
     // -------------------------------------------------------------------------- \\
     //                              Plugin 7 - Galaxy                             \\
     // -------------------------------------------------------------------------- \\
