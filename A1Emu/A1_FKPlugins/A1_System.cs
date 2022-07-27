@@ -31,6 +31,10 @@ class A1_System : TcpSession
 
     string saveData = "";
 
+    string opponentConID = "";
+    int opponentUID = 0;
+    int teamSide = 5;
+
     public A1_System(TcpServer server, int port, string sqServerInput, string directory) : base(server)
     {
         a1_Parser = new A1_Parser();
@@ -54,6 +58,7 @@ class A1_System : TcpSession
         }
 
         string[] commands = a1_Parser.ParseReceivedMessage(message);
+        string[] routingString = a1_Parser.ParseRoutingStrings(message);
         foreach (string command in commands)
         {
             string[] commandInfo = a1_Parser.ParseCommand(command);
@@ -101,6 +106,14 @@ class A1_System : TcpSession
                 case "u_dbr":
                     responses.Add(DeleteBuddyResponse(commandInfo[1], commandInfo[2], commandInfo[3]));
                     break;
+                case "u_inv":
+                    responses.Add(InvitePlayer(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5], commandInfo[6]));
+                    break;
+
+                // ---------------------------- Plugin 5 (Soccer) --------------------------- \\
+                case "cm":
+                    //responses.Add(CharacterMove(commandInfo[1], commandInfo[2], commandInfo[3]));
+                    break;
 
                 // ---------------------------- Plugin 7 (Galaxy) --------------------------- \\
                 case "lpv":
@@ -124,8 +137,23 @@ class A1_System : TcpSession
 
                 // ----------------------- Multiplayer (Shared by all) ---------------------- \\
                 case "jn":
+                    //Determines which plugin/game to join.
+                    switch(routingString[1])
+                    {
+                        //Chat
+                        case "2":
+                            responses.Add(JoinChat(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5]));
+                            break;
+                        //General Multiplayer
+                        default:
+                            responses.Add(JoinGame(commandInfo[1], commandInfo[2], routingString[1]));
+                            break;
+                    }
                     break;
-
+                    
+                case "rp":
+                    responses.Add(ReadyPlay(commandInfo[1], routingString[1]));
+                    break;
 
                 default:
                     responses.Add(@"<unknown />");
@@ -1110,11 +1138,433 @@ class A1_System : TcpSession
         return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
     }
 
+    string InvitePlayer(string av, string gid, string bid, string p, string t, string f)
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("u_inv");
+
+            writer.WriteAttributeString("r", "0");
+
+            writer.WriteAttributeString("av", av);
+
+            writer.WriteAttributeString("gid", gid);
+
+            writer.WriteAttributeString("bid", bid);
+
+            writer.WriteAttributeString("p", p);
+
+            writer.WriteAttributeString("t", t);
+
+            writer.WriteAttributeString("f", f);
+
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        string conID = "";
+        int buddyID = 0;
+        string buddyUsername = "";
+
+        var conB = new MySqlConnection(sqServer);
+        string sqlB = "SELECT * FROM user WHERE uID=@userID";
+        MySqlCommand sqCommandB = new MySqlCommand(sqlB, conB);
+        sqCommandB.Parameters.AddWithValue("@userID", t);
+        conB.Open();
+        using (MySqlDataReader sqReader = sqCommandB.ExecuteReader())
+        {
+            FKUser buddyUser = new FKUser();
+
+            while (sqReader.Read())
+            {
+                buddyID = Convert.ToInt32(sqReader["uID"]);
+                buddyUsername = sqReader["u"].ToString();
+                buddyUser.isOnline = Convert.ToInt32(sqReader["isOnline"]);
+                if (buddyUser.isOnline == 1)
+                {
+                    conID = sqReader["connectionID"].ToString();
+                }
+            }
+
+            conB.Close();
+        }
+
+        var sql = "INSERT INTO mp_5(username, userID, challenge, challenger, challengerInfo, ready) VALUES(@u, @uID, @c, @cf, @ci, @r)";
+        conB.Open();
+        using (var cmd = new MySqlCommand(sql, conB))
+        {
+            cmd.Parameters.AddWithValue("@u", buddyUsername);
+            cmd.Parameters.AddWithValue("@uID", buddyID);
+            cmd.Parameters.AddWithValue("@c", 1);
+            cmd.Parameters.AddWithValue("@cf", f);
+            cmd.Parameters.AddWithValue("@ci", av + "|0");
+            cmd.Parameters.AddWithValue("@r", 0);
+            cmd.Prepare();
+
+            cmd.ExecuteNonQuery();
+            cmd.Dispose();
+        }
+        conB.Close();
+
+        string sql1 = "UPDATE mp_5 SET challenger = @cf WHERE userID=@userID";
+        MySqlCommand sqCommand = new MySqlCommand(sql1, conB);
+        sqCommand.Parameters.AddWithValue("@userID", a1_User.userID);
+        sqCommand.Parameters.AddWithValue("@cf", t);
+        conB.Open();
+        sqCommand.ExecuteNonQuery();
+        conB.Close();
+
+        opponentConID = conID;
+        opponentUID = int.Parse(t);
+
+        a1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+
+        return "<notneeded/>";
+    }
+
     // -------------------------------------------------------------------------- \\
     //                               Plugin 2 - Chat                              \\
     // -------------------------------------------------------------------------- \\
 
+    //<jn t="3"><pr dl="1| | " f="000000CD" uid="2" n="FUNKEY" /></jn>1|2|2|0#
 
+    string JoinChat(string t, string dl, string f, string uid, string n)
+    {
+        //TODO - Figure out the database setup for the chatrooms.
+
+        var con = new MySqlConnection(sqServer);
+        string sql = "SELECT COUNT(*) FROM user WHERE currentChat = @chatRoom";
+        MySqlCommand sqCommand = new MySqlCommand(sql, con);
+        sqCommand.Parameters.AddWithValue("@chatRoom", t);
+        con.Open();
+        Int64 userCount = (Int64) sqCommand.ExecuteScalar();
+
+        int roomCount = Convert.ToInt32(userCount) / 7 + 1;
+        Console.WriteLine(roomCount);
+
+        string sql1 = "UPDATE user SET currentChat = @chatType WHERE uID=@userID";
+        MySqlCommand sqCommand1 = new MySqlCommand(sql1, con);
+        sqCommand1.Parameters.AddWithValue("@chatType", t);
+        sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID);
+        sqCommand1.ExecuteNonQuery();
+
+        if(Convert.ToInt32(userCount) % 7 == 0)
+        {
+            Console.WriteLine("New Room");
+            string sql2 = "UPDATE user SET currentRoom = @room WHERE uID=@userID";
+            MySqlCommand sqCommand2 = new MySqlCommand(sql2, con);
+            sqCommand2.Parameters.AddWithValue("@room", roomCount + 1);
+            sqCommand2.Parameters.AddWithValue("@userID", a1_User.userID);
+            sqCommand2.ExecuteNonQuery();
+        }else{
+            Console.WriteLine("Joining Room");
+            string sql2 = "UPDATE user SET currentRoom = @room WHERE uID=@userID";
+            MySqlCommand sqCommand2 = new MySqlCommand(sql2, con);
+            sqCommand2.Parameters.AddWithValue("@room", roomCount);
+            sqCommand2.Parameters.AddWithValue("@userID", a1_User.userID);
+            sqCommand2.ExecuteNonQuery();
+        }
+        
+        con.Close();
+
+        //! - Placeholder, needs to be filled with all the players.
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h2_0");
+            writer.WriteStartElement("pj");
+
+            writer.WriteStartElement("pr");
+            writer.WriteAttributeString("f", f);
+            writer.WriteAttributeString("uid", a1_User.userID.ToString());
+            writer.WriteAttributeString("n", a1_User.username.ToString());
+            writer.WriteEndElement();
+
+            writer.WriteEndElement();
+
+            writer.WriteStartElement("jn");
+            writer.WriteAttributeString("r", "0");
+            writer.WriteAttributeString("id", roomCount.ToString());
+            writer.WriteEndElement();
+            
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        var responseStream1 = new MemoryStream();
+        using (XmlWriter writer = XmlWriter.Create(responseStream1, settings))
+        {
+            writer.WriteStartElement("h2_0");
+            writer.WriteStartElement("pj");
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+    }
+
+    // -------------------------------------------------------------------------- \\
+    //                            Multiplayer (Generic)                           \\
+    // -------------------------------------------------------------------------- \\
+
+    string JoinGame(string pr, string c, string plugin)
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h" + plugin + "_0");
+
+            writer.WriteStartElement("jn");
+            writer.WriteAttributeString("r", "0");
+            writer.WriteEndElement();
+            
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        bool exists = true;
+
+        int challenge = 0;
+        int challenger = 0;
+
+        var con = new MySqlConnection(sqServer);
+        string sql = "SELECT * FROM mp_5 WHERE userID=@userID";
+        MySqlCommand sqCommand = new MySqlCommand(sql, con);
+        sqCommand.Parameters.AddWithValue("@userID", a1_User.userID);
+        con.Open();
+        using (MySqlDataReader sqReader = sqCommand.ExecuteReader())
+        {
+            while (sqReader.Read())
+            {   
+                try{
+                challenge = int.Parse(sqReader["challenge"].ToString());
+                challenger = int.Parse(sqReader["challenger"].ToString());
+                }catch{exists = false;}
+            }
+            con.Close();
+        }
+
+        Console.WriteLine(challenge);
+
+        if(!exists || challenger == 0)
+        {
+            var sql1 = "INSERT INTO mp_5(username, userID, challenge, connectionID, ready) VALUES(@u, @uID, @c, @cID, @r)";
+            con.Open();
+            using (var cmd = new MySqlCommand(sql1, con))
+            {
+                cmd.Parameters.AddWithValue("@u", a1_User.username);
+                cmd.Parameters.AddWithValue("@uID", a1_User.userID);
+                cmd.Parameters.AddWithValue("@c", c);
+                cmd.Parameters.AddWithValue("@cID", this.Id);
+                cmd.Parameters.AddWithValue("@r", 0);
+
+                cmd.Prepare();
+
+                cmd.ExecuteNonQuery();
+                cmd.Dispose();
+            }
+            con.Close();
+        }
+
+        if(challenge == 1)
+        {
+            string conID = "";
+            string opponentName = "";
+            string opponentInfo = "";
+
+            string sqlB = "SELECT * FROM user WHERE uID=@userID";
+            MySqlCommand sqCommandB = new MySqlCommand(sqlB, con);
+            sqCommandB.Parameters.AddWithValue("@userID", challenger.ToString());
+            con.Open();
+            using (MySqlDataReader sqReader = sqCommandB.ExecuteReader())
+            {
+                FKUser opponent = new FKUser();
+
+                while (sqReader.Read())
+                {
+                    opponentName = sqReader["u"].ToString();
+                    opponent.isOnline = Convert.ToInt32(sqReader["isOnline"]);
+                    if (opponent.isOnline == 1)
+                    {
+                        conID = sqReader["connectionID"].ToString();
+                    }
+                }
+
+                con.Close();
+            }
+
+            string sqlC = "SELECT * FROM mp_5 WHERE userID=@userID";
+            MySqlCommand sqCommandC = new MySqlCommand(sqlC, con);
+            sqCommandC.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
+            con.Open();
+            using (MySqlDataReader sqReader = sqCommandC.ExecuteReader())
+            {
+
+                while (sqReader.Read())
+                {
+                    opponentInfo = sqReader["challengerInfo"].ToString();
+                }
+
+                con.Close();
+            }
+
+            string sql1 = "UPDATE mp_5 SET challengerInfo = @ci WHERE userID=@userID";
+            MySqlCommand sqCommand1 = new MySqlCommand(sql1, con);
+            sqCommand1.Parameters.AddWithValue("@userID", challenger);
+            sqCommand1.Parameters.AddWithValue("@ci", pr);
+            con.Open();
+            sqCommand1.ExecuteNonQuery();
+            con.Close();
+
+            string sql2 = "UPDATE mp_5 SET connectionID = @cID WHERE userID=@userID";
+            MySqlCommand sqCommand2 = new MySqlCommand(sql2, con);
+            sqCommand2.Parameters.AddWithValue("@userID", a1_User.userID);
+            sqCommand2.Parameters.AddWithValue("@cID", this.Id);
+            con.Open();
+            sqCommand2.ExecuteNonQuery();
+            con.Close();
+
+            opponentConID = conID;
+            opponentUID = challenger;
+
+            var responseStream1 = new MemoryStream();
+            using (XmlWriter writer = XmlWriter.Create(responseStream1, settings))
+            {
+                writer.WriteStartElement("h" + plugin + "_0");
+
+                writer.WriteStartElement("oj");
+                writer.WriteAttributeString("n", a1_User.username);
+                writer.WriteAttributeString("pr", pr);
+                writer.WriteEndElement();
+                
+                writer.WriteEndElement();
+                writer.Flush();
+                writer.Close();
+            }
+            a1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
+
+            var responseStream2 = new MemoryStream();
+            using (XmlWriter writer = XmlWriter.Create(responseStream2, settings))
+            {
+                writer.WriteStartElement("h" + plugin + "_0");
+
+                writer.WriteStartElement("jn");
+                writer.WriteAttributeString("r", "0");
+                writer.WriteEndElement();
+            
+                writer.WriteStartElement("oj");
+                writer.WriteAttributeString("n", opponentName);
+                writer.WriteAttributeString("pr", opponentInfo);
+                writer.WriteEndElement();
+                
+                writer.WriteEndElement();
+                writer.Flush();
+                writer.Close();
+            }
+            return System.Text.ASCIIEncoding.ASCII.GetString(responseStream2.ToArray());
+        }
+
+        return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+    }
+
+    string ReadyPlay(string bid, string plugin)
+    {
+        var con = new MySqlConnection(sqServer);
+
+        string sql1 = "UPDATE mp_5 SET ready = @r WHERE userID=@userID";
+        MySqlCommand sqCommand1 = new MySqlCommand(sql1, con);
+        sqCommand1.Parameters.AddWithValue("@r", 1);
+        sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID);
+        con.Open();
+        sqCommand1.ExecuteNonQuery();
+        con.Close();
+
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+
+            writer.WriteStartElement("h" + plugin + "_0");
+
+            if(plugin == "5")
+            {   
+                writer.WriteStartElement("oc");
+                if(a1_User.userID < opponentUID)
+                {
+                    writer.WriteAttributeString("c", "0");
+                }else
+                {
+                    writer.WriteAttributeString("c", "1");
+                }
+                writer.WriteEndElement();
+
+                writer.WriteStartElement("cc");
+                if(a1_User.userID < opponentUID)
+                {
+                    writer.WriteAttributeString("c", "0");
+                }else
+                {
+                    writer.WriteAttributeString("c", "1");
+                }
+                writer.WriteEndElement();
+                writer.WriteStartElement("nr");
+                writer.WriteEndElement();
+
+                writer.WriteStartElement("sg");
+                writer.WriteEndElement();
+            }
+
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        int opponentReady = 0;
+
+        while(opponentReady == 0)
+        {
+            string sql = "SELECT ready FROM mp_5 WHERE userID=@userID";
+            MySqlCommand sqCommand = new MySqlCommand(sql, con);
+            sqCommand.Parameters.AddWithValue("@userID", opponentUID);
+            con.Open();
+            using (MySqlDataReader sqReader = sqCommand.ExecuteReader())
+            {
+                while (sqReader.Read())
+                {
+                    opponentReady = int.Parse(sqReader["ready"].ToString());
+                }
+                con.Close();
+            }
+
+            System.Threading.Thread.Sleep(500);
+        }
+
+
+        return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+    }
+    
     // -------------------------------------------------------------------------- \\
     //                              Plugin 7 - Galaxy                             \\
     // -------------------------------------------------------------------------- \\
