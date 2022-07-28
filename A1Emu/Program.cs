@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Reflection;
+using MySqlConnector;
 
 class Program
 {
@@ -44,7 +45,24 @@ class Program
             Console.WriteLine("[A1Emu] ERROR! Failed to load the config file.");
         }
 
-        //TODO - Generate a SQL DB.
+        //TODO - Generate a SQL DB. (Will probably be an external script or a manual README instruction)
+
+        //TODO - Truncate all the multiplayer tables whenever they get added.
+
+        Console.WriteLine("[A1Emu] Performing SQL cleanup...");
+
+        var con = new MySqlConnection(sqServer);
+
+        string sqlResetOnineStatus = "UPDATE user SET isOnline = 0;";
+        string sqlTruncateMP5 = "TRUNCATE TABLE mp_5;";
+
+        MySqlCommand resetOnlineStatus = new MySqlCommand(sqlResetOnineStatus, con);
+        MySqlCommand truncateMP5 = new MySqlCommand(sqlTruncateMP5, con);
+        
+        con.Open();
+        resetOnlineStatus.ExecuteNonQuery();
+        truncateMP5.ExecuteNonQuery();
+        con.Close();
 
         var A1_Plugin0 = new ServerSystem(System.Net.IPAddress.Parse(ip), port, sqServer, directory);
         A1_Plugin0.Start();
