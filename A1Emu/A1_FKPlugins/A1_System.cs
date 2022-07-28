@@ -157,6 +157,10 @@ class A1_System : TcpSession
                             break;
                     }
                     break;
+
+                case "lv":
+                    responses.Add(LeaveGame(commandInfo[1], routingString[1]));
+                    break;
                     
                 case "rp":
                     responses.Add(ReadyPlay(commandInfo[1], routingString[1]));
@@ -405,7 +409,7 @@ class A1_System : TcpSession
                     uID = Convert.ToInt32(cmd.ExecuteScalar());
                 }
 
-                var sql = "INSERT INTO user(u, p, sq, sa, uID) VALUES(@user, @pass, @secQ, @secA, @userID)";
+                var sql = "INSERT INTO user(u, p, sq, sa, uID, phoneStatus, chatStatus) VALUES(@user, @pass, @secQ, @secA, @userID, @ps, @cs)";
                 using (var cmd = new MySqlCommand(sql, con))
                 {
                     cmd.Parameters.AddWithValue("@user", l);
@@ -413,6 +417,8 @@ class A1_System : TcpSession
                     cmd.Parameters.AddWithValue("@secQ", sq);
                     cmd.Parameters.AddWithValue("@secA", sa);
                     cmd.Parameters.AddWithValue("@userID", uID);
+                    cmd.Parameters.AddWithValue("@ps", 0);
+                    cmd.Parameters.AddWithValue("@cs", 0);
                     cmd.Prepare();
 
                     cmd.ExecuteNonQuery();
@@ -1659,6 +1665,41 @@ class A1_System : TcpSession
         a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
 
         return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+    }
+
+    string LeaveGame(string bid, string plugin)
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h" + plugin + "_0");
+            writer.WriteStartElement("lv");
+
+            writer.WriteAttributeString("r", "1");
+            writer.WriteAttributeString("bid", bid);
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+
+        var con = new MySqlConnection(sqServer);
+
+        string sql1 = "DELETE FROM mp_5 WHERE userID=@userID";
+        MySqlCommand sqCommand1 = new MySqlCommand(sql1, con);
+        sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID);
+        con.Open();
+        sqCommand1.ExecuteNonQuery();
+        con.Close();
+
+        return "<notneeded />";
     }
 
     // -------------------------------------------------------------------------- \\
