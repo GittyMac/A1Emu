@@ -110,6 +110,9 @@ class A1_System : TcpSession
                 case "u_inv":
                     responses.Add(InvitePlayer(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5], commandInfo[6]));
                     break;
+                case "u_inr":
+                    responses.Add(InviteBuddyResponse(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5], commandInfo[6]));
+                    break;
 
                 // ---------------------------- Plugin 5 (Soccer) --------------------------- \\
                 case "cm":
@@ -168,6 +171,10 @@ class A1_System : TcpSession
                 
                 case "ms":
                     responses.Add(MessageOpponent(commandInfo[1], commandInfo[2], routingString[1]));
+                    break;
+
+                case "pa":
+                    responses.Add(PlayAgain(commandInfo[1], routingString[1]));
                     break;
 
                 default:
@@ -1212,7 +1219,7 @@ class A1_System : TcpSession
             conB.Close();
         }
 
-        var sql = "INSERT INTO mp_5(username, userID, challenge, challenger, challengerInfo, ready) VALUES(@u, @uID, @c, @cf, @ci, @r)";
+        var sql = "INSERT INTO mp_5(username, userID, challenge, challenger, challengerInfo, ready, score) VALUES(@u, @uID, @c, @cf, @ci, 0, 0)";
         conB.Open();
         using (var cmd = new MySqlCommand(sql, conB))
         {
@@ -1221,7 +1228,6 @@ class A1_System : TcpSession
             cmd.Parameters.AddWithValue("@c", 1);
             cmd.Parameters.AddWithValue("@cf", f);
             cmd.Parameters.AddWithValue("@ci", av + "|0");
-            cmd.Parameters.AddWithValue("@r", 0);
             cmd.Prepare();
 
             cmd.ExecuteNonQuery();
@@ -1241,6 +1247,60 @@ class A1_System : TcpSession
         opponentUID = int.Parse(t);
 
         a1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+
+        return "<notneeded/>";
+    }
+
+    string InviteBuddyResponse(string gid, string bid, string p, string a, string t, string f)
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("u_inr");
+
+            writer.WriteAttributeString("r", "0");
+            writer.WriteAttributeString("f", f);
+            writer.WriteAttributeString("t", t);
+            writer.WriteAttributeString("a", a);
+            writer.WriteAttributeString("p", p);
+
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        string conID = "";
+
+        var conB = new MySqlConnection(sqServer);
+        string sqlB = "SELECT * FROM user WHERE uID=@userID";
+        MySqlCommand sqCommandB = new MySqlCommand(sqlB, conB);
+        sqCommandB.Parameters.AddWithValue("@userID", f);
+        conB.Open();
+        using (MySqlDataReader sqReader = sqCommandB.ExecuteReader())
+        {
+            while (sqReader.Read())
+            {
+                if (Convert.ToInt32(sqReader["isOnline"].ToString()) == 1)
+                {
+                    conID = sqReader["connectionID"].ToString();
+                }
+            }
+
+            conB.Close();
+        }
+
+        a1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+
+        string sql1 = "DELETE FROM mp_5 WHERE userID=@userID";
+        MySqlCommand sqCommand1 = new MySqlCommand(sql1, conB);
+        sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID);
+        conB.Open();
+        sqCommand1.ExecuteNonQuery();
+        conB.Close();
 
         return "<notneeded/>";
     }
@@ -1385,7 +1445,7 @@ class A1_System : TcpSession
 
         if(!exists || challenger == 0)
         {
-            var sql1 = "INSERT INTO mp_5(username, userID, challenge, connectionID, ready) VALUES(@u, @uID, @c, @cID, @r)";
+            var sql1 = "INSERT INTO mp_5(username, userID, challenge, connectionID, playerInfo, ready, score) VALUES(@u, @uID, @c, @cID, @pi, 0, 0)";
             con.Open();
             using (var cmd = new MySqlCommand(sql1, con))
             {
@@ -1393,7 +1453,7 @@ class A1_System : TcpSession
                 cmd.Parameters.AddWithValue("@uID", a1_User.userID);
                 cmd.Parameters.AddWithValue("@c", c);
                 cmd.Parameters.AddWithValue("@cID", this.Id);
-                cmd.Parameters.AddWithValue("@r", 0);
+                cmd.Parameters.AddWithValue("@pi", pr);
 
                 cmd.Prepare();
 
@@ -1403,7 +1463,123 @@ class A1_System : TcpSession
             con.Close();
         }
 
-        if(challenge == 1)
+        if(c == "0" && challenger != 1)
+        {
+            string opponentName = "";
+            string opponentInfo = "";
+            int i = 0;
+            while(i < 10)
+            {
+                string sqlC = "SELECT * FROM mp_5 WHERE userID!=@userID AND challenge=0";
+                MySqlCommand sqCommandC = new MySqlCommand(sqlC, con);
+                sqCommandC.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
+                con.Open();
+                using (MySqlDataReader sqReader = sqCommandC.ExecuteReader())
+                {
+
+                    while (sqReader.Read())
+                    {
+                        opponentUID = int.Parse(sqReader["userID"].ToString());
+                        opponentConID = sqReader["connectionID"].ToString();
+                        opponentName = sqReader["username"].ToString();
+                        opponentInfo = sqReader["playerInfo"].ToString();
+                    }
+
+                    con.Close();
+                }
+                if(opponentConID == "")
+                {
+                    System.Threading.Thread.Sleep(1000);
+                    i += 1;
+                }else {i = 10;}
+            }
+
+            if(opponentConID != "")
+            {
+                string sql1 = "UPDATE mp_5 SET challenge = 1 WHERE userID=@userID";
+                MySqlCommand sqCommand1 = new MySqlCommand(sql1, con);
+                sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID);
+                MySqlCommand sqCommand2 = new MySqlCommand(sql1, con);
+                sqCommand2.Parameters.AddWithValue("@userID", opponentUID);
+                con.Open();
+                sqCommand1.ExecuteNonQuery();
+                sqCommand2.ExecuteNonQuery();
+                con.Close();
+
+                var responseStream1 = new MemoryStream();
+                using (XmlWriter writer = XmlWriter.Create(responseStream1, settings))
+                {
+                    writer.WriteStartElement("h" + plugin + "_0");
+
+                    writer.WriteStartElement("oj");
+                    writer.WriteAttributeString("n", a1_User.username);
+                    writer.WriteAttributeString("pr", pr);
+                    writer.WriteEndElement();
+                    
+                    writer.WriteEndElement();
+                    writer.Flush();
+                    writer.Close();
+                }
+                a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
+
+                var responseStream2 = new MemoryStream();
+                using (XmlWriter writer = XmlWriter.Create(responseStream2, settings))
+                {
+                    writer.WriteStartElement("h" + plugin + "_0");
+
+                    writer.WriteStartElement("jn");
+                    writer.WriteAttributeString("r", "0");
+                    writer.WriteEndElement();
+                
+                    writer.WriteStartElement("oj");
+                    writer.WriteAttributeString("n", opponentName);
+                    writer.WriteAttributeString("pr", opponentInfo);
+                    writer.WriteEndElement();
+                    
+                    writer.WriteEndElement();
+                    writer.Flush();
+                    writer.Close();
+                }
+                return System.Text.ASCIIEncoding.ASCII.GetString(responseStream2.ToArray());
+            }else
+            {
+                con.Open();
+                using (MySqlDataReader sqReader = sqCommand.ExecuteReader())
+                {
+                    while (sqReader.Read())
+                    {   
+                        try{
+                        challenge = int.Parse(sqReader["challenge"].ToString());
+                        challenger = int.Parse(sqReader["challenger"].ToString());
+                        }catch{exists = false;}
+                    }
+                    con.Close();
+                }
+                if(challenge == 1)
+                {
+                    var responseStream2 = new MemoryStream();
+                    using (XmlWriter writer = XmlWriter.Create(responseStream2, settings))
+                    {
+                        writer.WriteStartElement("h" + plugin + "_0");
+
+                        writer.WriteStartElement("jn");
+                        writer.WriteAttributeString("r", "0");
+                        writer.WriteEndElement();
+                    
+                        writer.WriteStartElement("oj");
+                        writer.WriteAttributeString("n", opponentName);
+                        writer.WriteAttributeString("pr", opponentInfo);
+                        writer.WriteEndElement();
+                        
+                        writer.WriteEndElement();
+                        writer.Flush();
+                        writer.Close();
+                    }
+                    return System.Text.ASCIIEncoding.ASCII.GetString(responseStream2.ToArray());
+                }else return "<failedsotimeout/>";
+            }
+            
+        }else if(challenge == 1)
         {
             string conID = "";
             string opponentName = "";
@@ -1529,78 +1705,103 @@ class A1_System : TcpSession
 
             if(plugin == "5")
             {   
-                writer.WriteStartElement("oc");
-                if(teamSide == 5)
+                if(roundCount < 10)
                 {
-                    if(a1_User.userID < opponentUID)
+                    if(roundCount == 5)
                     {
-                        teamSide = 0;
-                        writer.WriteAttributeString("c", "0");
-                    }else{   
-                        teamSide = 1;
-                        writer.WriteAttributeString("c", "1");
+                        writer.WriteStartElement("nr");
+                        writer.WriteEndElement();
                     }
-                }else{
-                    if(roundCount % 5 == 0)
-                    {
-                        switch(teamSide)
+
+                    if(roundCount == 0 || roundCount == 4)
+                    { 
+                        writer.WriteStartElement("cc");
+                        if(teamSide == 5)
                         {
-                            case 0:
+                            if(a1_User.userID < opponentUID)
+                            {
                                 teamSide = 1;
                                 writer.WriteAttributeString("c", "1");
-                                break;
-                            case 1:
+                            }else
+                            {
                                 teamSide = 0;
                                 writer.WriteAttributeString("c", "0");
-                                break;
+                            }
+                        }else{
+                            switch(teamSide)
+                            {
+                                case 0:
+                                    writer.WriteAttributeString("c", "1");
+                                    break;
+                                case 1:
+                                    writer.WriteAttributeString("c", "0");
+                                    break;
+                            }
                         }
-                    }else
+                        writer.WriteEndElement();
+                    }
+
+                    if(roundCount != 5)
                     {
-                        switch(teamSide)
+                        writer.WriteStartElement("nr");
+                        writer.WriteEndElement();
+                    }
+
+
+                    if(roundCount == 0)
+                    {
+                        writer.WriteStartElement("sg");
+                        writer.WriteEndElement();              
+                    }
+
+                    roundCount += 1;
+                    Console.WriteLine(roundCount);
+                }else
+                {
+                    int playerScore = 0;
+                    int opponentScore = 0;
+
+                    //Get the player's score.
+                    string sql3 = "SELECT score FROM mp_5 WHERE userID=@userID";
+                    MySqlCommand sqCommand3 = new MySqlCommand(sql3, con);
+                    sqCommand3.Parameters.AddWithValue("@userID", a1_User.userID);
+
+                    string sql4 = "SELECT score FROM mp_5 WHERE userID=@userID";
+                    MySqlCommand sqCommand4 = new MySqlCommand(sql3, con);
+                    sqCommand4.Parameters.AddWithValue("@userID", opponentUID);
+
+                    con.Open();
+                    using (MySqlDataReader sqReader = sqCommand3.ExecuteReader())
+                    {
+                        while (sqReader.Read())
                         {
-                            case 0:
-                                writer.WriteAttributeString("c", "0");
-                                break;
-                            case 1:
-                                writer.WriteAttributeString("c", "1");
-                                break;
+                            playerScore = int.Parse(sqReader["score"].ToString());
                         }
                     }
-                }
-                writer.WriteEndElement();
-
-                writer.WriteStartElement("cc");
-                if(teamSide == 5)
-                {
-                    if(a1_User.userID < opponentUID)
+                    using (MySqlDataReader sqReader = sqCommand4.ExecuteReader())
                     {
-                        writer.WriteAttributeString("c", "1");
+                        while (sqReader.Read())
+                        {
+                            opponentScore = int.Parse(sqReader["score"].ToString());
+                        }
+                    }
+                    con.Close();
+
+                    writer.WriteStartElement("go");
+                    //The result attribute determines the coin distribution.
+                    if(playerScore > opponentScore)
+                    {
+                        writer.WriteAttributeString("r", "6");
+                    }else if(playerScore < opponentScore)
+                    {
+                        writer.WriteAttributeString("r", "7");
                     }else
                     {
-                        writer.WriteAttributeString("c", "0");
+                       writer.WriteAttributeString("r", "8"); 
                     }
-                }else{
-                    switch(teamSide)
-                    {
-                        case 0:
-                            writer.WriteAttributeString("c", "0");
-                            break;
-                        case 1:
-                            writer.WriteAttributeString("c", "1");
-                            break;
-                    }
+                
+                    writer.WriteEndElement();      
                 }
-                writer.WriteEndElement();
-                writer.WriteStartElement("nr");
-                writer.WriteEndElement();
-
-                if(isStartingGame)
-                {
-                    writer.WriteStartElement("sg");
-                    writer.WriteEndElement();              
-                }
-
-                roundCount += 1;
             }
 
             writer.WriteEndElement();
@@ -1677,18 +1878,22 @@ class A1_System : TcpSession
         using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
         {
             writer.WriteStartElement("h" + plugin + "_0");
-            writer.WriteStartElement("lv");
 
-            writer.WriteAttributeString("r", "1");
-            writer.WriteAttributeString("bid", bid);
+            writer.WriteStartElement("go");
+            writer.WriteAttributeString("r", "5");
+            writer.WriteEndElement();    
 
-            writer.WriteEndElement();
             writer.WriteEndElement();
             writer.Flush();
             writer.Close();
         }
 
         a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+
+        opponentConID = "";
+        opponentUID = 0;
+        teamSide = 5;
+        roundCount = 0;
 
         var con = new MySqlConnection(sqServer);
 
@@ -1700,6 +1905,30 @@ class A1_System : TcpSession
         con.Close();
 
         return "<notneeded />";
+    }
+
+    string PlayAgain(string bid, string plugin)
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h" + plugin + "_0");
+
+            writer.WriteStartElement("pa");
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+
+        return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
     }
 
     // -------------------------------------------------------------------------- \\
@@ -1772,6 +2001,10 @@ class A1_System : TcpSession
 
     string BlockShot(string d, string lx, string m, string c, string bid)
     {
+        bool blocked = false;
+        int playerScore = 0;
+        int opponentScore = 0;
+
         var responseStream = new MemoryStream();
         XmlWriterSettings settings = new XmlWriterSettings();
         settings.OmitXmlDeclaration = true;
@@ -1794,6 +2027,67 @@ class A1_System : TcpSession
             writer.WriteAttributeString("bid", bid);
 
             writer.WriteEndElement();
+
+            switch(c)
+            {
+                //Missed (Above net)
+                case "0":
+                    blocked = true;
+                    break;
+                //Blocked
+                case "1":
+                    blocked = true;
+                    break;
+                //Missed (Beside net)
+                case "3":
+                    blocked = true;
+                    break;
+            }
+
+            //Award a point to the winner of the round.
+            var con = new MySqlConnection(sqServer);
+            string sql1 = "UPDATE mp_5 SET score = score + 1 WHERE userID=@userID";
+            MySqlCommand sqCommand = new MySqlCommand(sql1, con);
+            if(blocked)
+                sqCommand.Parameters.AddWithValue("@userID", a1_User.userID);
+            else
+                sqCommand.Parameters.AddWithValue("@userID", opponentUID);
+
+            //Get the player's score.
+            string sql2 = "SELECT score FROM mp_5 WHERE userID=@userID";
+            MySqlCommand sqCommand1 = new MySqlCommand(sql2, con);
+            sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID);
+
+            string sql3 = "SELECT score FROM mp_5 WHERE userID=@userID";
+            MySqlCommand sqCommand2 = new MySqlCommand(sql3, con);
+            sqCommand2.Parameters.AddWithValue("@userID", opponentUID);
+
+            con.Open();
+            sqCommand.ExecuteNonQuery();
+            using (MySqlDataReader sqReader = sqCommand1.ExecuteReader())
+            {
+                while (sqReader.Read())
+                {
+                    playerScore = int.Parse(sqReader["score"].ToString());
+                }
+            }
+            using (MySqlDataReader sqReader = sqCommand2.ExecuteReader())
+            {
+                while (sqReader.Read())
+                {
+                    opponentScore = int.Parse(sqReader["score"].ToString());
+                }
+            }
+            con.Close();
+
+            writer.WriteStartElement("ps");
+            writer.WriteAttributeString("s", opponentScore.ToString());
+            writer.WriteEndElement();
+
+            writer.WriteStartElement("os");
+            writer.WriteAttributeString("s", playerScore.ToString());
+            writer.WriteEndElement();
+
             writer.WriteEndElement();
             writer.Flush();
             writer.Close();
@@ -1801,7 +2095,25 @@ class A1_System : TcpSession
 
         a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
 
-        return "<notneeded/>";
+        var responseStream1 = new MemoryStream();
+        using (XmlWriter writer1 = XmlWriter.Create(responseStream1, settings))
+        {
+            writer1.WriteStartElement("h5_0");
+
+            writer1.WriteStartElement("os");
+            writer1.WriteAttributeString("s", opponentScore.ToString());
+            writer1.WriteEndElement();
+
+            writer1.WriteStartElement("ps");
+            writer1.WriteAttributeString("s", playerScore.ToString());
+            writer1.WriteEndElement();
+
+            writer1.WriteEndElement();
+            writer1.Flush();
+            writer1.Close();
+        }
+
+        return System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray());
     }
 
     // -------------------------------------------------------------------------- \\
