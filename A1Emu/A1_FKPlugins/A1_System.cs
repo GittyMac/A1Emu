@@ -387,10 +387,10 @@ class A1_System : TcpSession
         var con1 = new MySqlConnection(sqServer);
 
         string sql1 = "SELECT * FROM user WHERE u=@Uname";
-        MySqlCommand sqCommand = new MySqlCommand(sql1, con1);
-        sqCommand.Parameters.AddWithValue("@Uname", l);
+        MySqlCommand getUserFromUsername = new MySqlCommand(sql1, con1);
+        getUserFromUsername.Parameters.AddWithValue("@Uname", l);
         con1.Open();
-        using (MySqlDataReader sqReader = sqCommand.ExecuteReader())
+        using (MySqlDataReader sqReader = getUserFromUsername.ExecuteReader())
         {
             while (sqReader.Read())
             {
@@ -463,10 +463,10 @@ class A1_System : TcpSession
         var con = new MySqlConnection(sqServer);
 
         string sql = "SELECT * FROM user WHERE u=@Uname";
-        MySqlCommand sqCommand = new MySqlCommand(sql, con);
-        sqCommand.Parameters.AddWithValue("@Uname", n);
+        MySqlCommand getUserInfoFromUsername = new MySqlCommand(sql, con);
+        getUserInfoFromUsername.Parameters.AddWithValue("@Uname", n);
         con.Open();
-        using (MySqlDataReader sqReader = sqCommand.ExecuteReader())
+        using (MySqlDataReader sqReader = getUserInfoFromUsername.ExecuteReader())
         {
             while (sqReader.Read())
             {
@@ -501,11 +501,11 @@ class A1_System : TcpSession
                     //Password correct.
                     resultCode = 0;
                     string sqlID = "UPDATE user SET connectionID = @cID WHERE uID=@userID";
-                    MySqlCommand sqCommandID = new MySqlCommand(sqlID, con);
-                    sqCommandID.Parameters.AddWithValue("@userID", a1_User.userID);
-                    sqCommandID.Parameters.AddWithValue("@cID", this.Id);
+                    MySqlCommand setConnectionID = new MySqlCommand(sqlID, con);
+                    setConnectionID.Parameters.AddWithValue("@userID", a1_User.userID);
+                    setConnectionID.Parameters.AddWithValue("@cID", this.Id);
                     con.Open();
-                    sqCommandID.ExecuteNonQuery();
+                    setConnectionID.ExecuteNonQuery();
                     con.Close();
                 }
                 else
@@ -573,10 +573,10 @@ class A1_System : TcpSession
 
             var con = new MySqlConnection(sqServer);
             string sql = "SELECT buddyList FROM user WHERE uID=@userID";
-            MySqlCommand sqCommand = new MySqlCommand(sql, con);
-            sqCommand.Parameters.AddWithValue("@userID", a1_User.userID);
+            MySqlCommand getBuddyList = new MySqlCommand(sql, con);
+            getBuddyList.Parameters.AddWithValue("@userID", a1_User.userID);
             con.Open();
-            using (MySqlDataReader sqReader = sqCommand.ExecuteReader())
+            using (MySqlDataReader sqReader = getBuddyList.ExecuteReader())
             {
                 while (sqReader.Read())
                 {
@@ -593,10 +593,10 @@ class A1_System : TcpSession
                 {
                     var conB = new MySqlConnection(sqServer);
                     string sqlB = "SELECT * FROM user WHERE uID=@userID";
-                    MySqlCommand sqCommandB = new MySqlCommand(sqlB, conB);
-                    sqCommandB.Parameters.AddWithValue("@userID", buddy);
+                    MySqlCommand getBuddyInfo = new MySqlCommand(sqlB, conB);
+                    getBuddyInfo.Parameters.AddWithValue("@userID", buddy);
                     conB.Open();
-                    using (MySqlDataReader sqReader = sqCommandB.ExecuteReader())
+                    using (MySqlDataReader sqReader = getBuddyInfo.ExecuteReader())
                     {
                         FKUser buddyUser = new FKUser();
 
@@ -667,11 +667,11 @@ class A1_System : TcpSession
 
         var con = new MySqlConnection(sqServer);
         string sql1 = "UPDATE user SET chatStatus = @ccs WHERE uID=@userID";
-        MySqlCommand sqCommand = new MySqlCommand(sql1, con);
-        sqCommand.Parameters.AddWithValue("@userID", a1_User.userID);
-        sqCommand.Parameters.AddWithValue("@ccs", a1_User.status);
+        MySqlCommand setChatStatus = new MySqlCommand(sql1, con);
+        setChatStatus.Parameters.AddWithValue("@userID", a1_User.userID);
+        setChatStatus.Parameters.AddWithValue("@ccs", a1_User.status);
         con.Open();
-        sqCommand.ExecuteNonQuery();
+        setChatStatus.ExecuteNonQuery();
         con.Close();
 
         var responseStream = new MemoryStream();
@@ -706,12 +706,12 @@ class A1_System : TcpSession
         a1_User.phoneStatus = int.Parse(ph);
 
         var con = new MySqlConnection(sqServer);
-        string sql1 = "UPDATE user SET chatStatus = @ccs WHERE uID=@userID";
-        MySqlCommand sqCommand = new MySqlCommand(sql1, con);
-        sqCommand.Parameters.AddWithValue("@userID", a1_User.userID);
-        sqCommand.Parameters.AddWithValue("@ccs", a1_User.status);
+        string sql1 = "UPDATE user SET phoneStatus = @ccs WHERE uID=@userID";
+        MySqlCommand setPhoneStatus = new MySqlCommand(sql1, con);
+        setPhoneStatus.Parameters.AddWithValue("@userID", a1_User.userID);
+        setPhoneStatus.Parameters.AddWithValue("@ccs", a1_User.phoneStatus);
         con.Open();
-        sqCommand.ExecuteNonQuery();
+        setPhoneStatus.ExecuteNonQuery();
         con.Close();
 
         var responseStream = new MemoryStream();
@@ -765,10 +765,10 @@ class A1_System : TcpSession
 
         var conB = new MySqlConnection(sqServer);
         string sqlB = "SELECT * FROM user WHERE uID=@userID";
-        MySqlCommand sqCommandB = new MySqlCommand(sqlB, conB);
-        sqCommandB.Parameters.AddWithValue("@userID", t);
+        MySqlCommand selectBuddyConID = new MySqlCommand(sqlB, conB);
+        selectBuddyConID.Parameters.AddWithValue("@userID", t);
         conB.Open();
-        using (MySqlDataReader sqReader = sqCommandB.ExecuteReader())
+        using (MySqlDataReader sqReader = selectBuddyConID.ExecuteReader())
         {
             FKUser buddyUser = new FKUser();
 
@@ -795,10 +795,10 @@ class A1_System : TcpSession
         var con = new MySqlConnection(sqServer);
 
         string sql = "SELECT * FROM user WHERE u=@Uname";
-        MySqlCommand sqCommand = new MySqlCommand(sql, con);
-        sqCommand.Parameters.AddWithValue("@Uname", n);
+        MySqlCommand getUserInfo = new MySqlCommand(sql, con);
+        getUserInfo.Parameters.AddWithValue("@Uname", n);
         con.Open();
-        using (MySqlDataReader sqReader = sqCommand.ExecuteReader())
+        using (MySqlDataReader sqReader = getUserInfo.ExecuteReader())
         {
             while (sqReader.Read())
             {
@@ -888,10 +888,10 @@ class A1_System : TcpSession
         var con = new MySqlConnection(sqServer);
 
         string sql = "SELECT * FROM user WHERE u=@Uname";
-        MySqlCommand sqCommand = new MySqlCommand(sql, con);
-        sqCommand.Parameters.AddWithValue("@Uname", n);
+        MySqlCommand getUserInfo = new MySqlCommand(sql, con);
+        getUserInfo.Parameters.AddWithValue("@Uname", n);
         con.Open();
-        using (MySqlDataReader sqReader = sqCommand.ExecuteReader())
+        using (MySqlDataReader sqReader = getUserInfo.ExecuteReader())
         {
             while (sqReader.Read())
             {
@@ -929,19 +929,19 @@ class A1_System : TcpSession
                 accepted = true;
                 writer.WriteAttributeString("r", "0");
                 string sql1 = "UPDATE user SET buddyList = CONCAT_WS(',', buddyList, @buddy) WHERE uID=@userID";
-                MySqlCommand sqCommand1 = new MySqlCommand(sql1, con);
-                sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
-                sqCommand1.Parameters.AddWithValue("@buddy", buddy.userID.ToString());
+                MySqlCommand updatePlayersBuddies = new MySqlCommand(sql1, con);
+                updatePlayersBuddies.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
+                updatePlayersBuddies.Parameters.AddWithValue("@buddy", buddy.userID.ToString());
                 con.Open();
-                sqCommand1.ExecuteNonQuery();
+                updatePlayersBuddies.ExecuteNonQuery();
                 con.Close();
 
                 string sql2 = "UPDATE user SET buddyList = CONCAT_WS(',', buddyList, @userID) WHERE uID=@buddy";
-                MySqlCommand sqCommand2 = new MySqlCommand(sql2, con);
-                sqCommand2.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
-                sqCommand2.Parameters.AddWithValue("@buddy", buddy.userID.ToString());
+                MySqlCommand updateBuddysBuddies = new MySqlCommand(sql2, con);
+                updateBuddysBuddies.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
+                updateBuddysBuddies.Parameters.AddWithValue("@buddy", buddy.userID.ToString());
                 con.Open();
-                sqCommand2.ExecuteNonQuery();
+                updateBuddysBuddies.ExecuteNonQuery();
                 con.Close();
                 writer.WriteAttributeString("b", buddy.userID.ToString());
                 writer.WriteAttributeString("ph", buddy.phoneStatus.ToString());
@@ -1000,10 +1000,10 @@ class A1_System : TcpSession
         var con = new MySqlConnection(sqServer);
 
         string sql = "SELECT * FROM user WHERE uID=@userID";
-        MySqlCommand sqCommand = new MySqlCommand(sql, con);
-        sqCommand.Parameters.AddWithValue("@userID", b);
+        MySqlCommand getUserInfo = new MySqlCommand(sql, con);
+        getUserInfo.Parameters.AddWithValue("@userID", b);
         con.Open();
-        using (MySqlDataReader sqReader = sqCommand.ExecuteReader())
+        using (MySqlDataReader sqReader = getUserInfo.ExecuteReader())
         {
             while (sqReader.Read())
             {
@@ -1083,18 +1083,18 @@ class A1_System : TcpSession
             a1_User.rawBuddies = buddyList.ToArray();
             string buddies = String.Join(",", a1_User.rawBuddies);
             string sql1 = "UPDATE user SET buddyList = @buddies WHERE uID=@userID";
-            MySqlCommand sqCommand1 = new MySqlCommand(sql1, con);
-            sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
+            MySqlCommand removeBuddyFromPlayersList = new MySqlCommand(sql1, con);
+            removeBuddyFromPlayersList.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
             if (buddies != "")
             {
-                sqCommand1.Parameters.AddWithValue("@buddies", buddies);
+                removeBuddyFromPlayersList.Parameters.AddWithValue("@buddies", buddies);
             }
             else
             {
-                sqCommand1.Parameters.AddWithValue("@buddies", DBNull.Value);
+                removeBuddyFromPlayersList.Parameters.AddWithValue("@buddies", DBNull.Value);
             }
             con.Open();
-            sqCommand1.ExecuteNonQuery();
+            removeBuddyFromPlayersList.ExecuteNonQuery();
             con.Close();
 
             buddyList = new List<string>(buddy.rawBuddies);
@@ -1102,18 +1102,18 @@ class A1_System : TcpSession
             buddy.rawBuddies = buddyList.ToArray();
             buddies = String.Join(",", buddy.rawBuddies);
             string sql2 = "UPDATE user SET buddyList = @buddies WHERE uID=@buddy";
-            MySqlCommand sqCommand2 = new MySqlCommand(sql2, con);
+            MySqlCommand removeBuddyFromBuddysList = new MySqlCommand(sql2, con);
             if (buddies != "")
             {
-                sqCommand2.Parameters.AddWithValue("@buddies", buddies);
+                removeBuddyFromBuddysList.Parameters.AddWithValue("@buddies", buddies);
             }
             else
             {
-                sqCommand2.Parameters.AddWithValue("@buddies", DBNull.Value);
+                removeBuddyFromBuddysList.Parameters.AddWithValue("@buddies", DBNull.Value);
             }
-            sqCommand2.Parameters.AddWithValue("@buddy", buddy.userID.ToString());
+            removeBuddyFromBuddysList.Parameters.AddWithValue("@buddy", buddy.userID.ToString());
             con.Open();
-            sqCommand2.ExecuteNonQuery();
+            removeBuddyFromBuddysList.ExecuteNonQuery();
             con.Close();
 
             var responseStream2 = new MemoryStream();
@@ -1198,10 +1198,10 @@ class A1_System : TcpSession
 
         var conB = new MySqlConnection(sqServer);
         string sqlB = "SELECT * FROM user WHERE uID=@userID";
-        MySqlCommand sqCommandB = new MySqlCommand(sqlB, conB);
-        sqCommandB.Parameters.AddWithValue("@userID", t);
+        MySqlCommand getRecipientInfo = new MySqlCommand(sqlB, conB);
+        getRecipientInfo.Parameters.AddWithValue("@userID", t);
         conB.Open();
-        using (MySqlDataReader sqReader = sqCommandB.ExecuteReader())
+        using (MySqlDataReader sqReader = getRecipientInfo.ExecuteReader())
         {
             FKUser buddyUser = new FKUser();
 
@@ -1219,7 +1219,7 @@ class A1_System : TcpSession
             conB.Close();
         }
 
-        var sql = "INSERT INTO mp_5(username, userID, challenge, challenger, challengerInfo, ready, score) VALUES(@u, @uID, @c, @cf, @ci, 0, 0)";
+        var sql = "INSERT INTO mp_" + p + "(username, userID, challenge, challenger, challengerInfo, ready, score) VALUES(@u, @uID, @c, @cf, @ci, 0, 0)";
         conB.Open();
         using (var cmd = new MySqlCommand(sql, conB))
         {
@@ -1235,12 +1235,12 @@ class A1_System : TcpSession
         }
         conB.Close();
 
-        string sql1 = "UPDATE mp_5 SET challenger = @cf WHERE userID=@userID";
-        MySqlCommand sqCommand = new MySqlCommand(sql1, conB);
-        sqCommand.Parameters.AddWithValue("@userID", a1_User.userID);
-        sqCommand.Parameters.AddWithValue("@cf", t);
+        string sql1 = "UPDATE mp_" + p + " SET challenger = @cf WHERE userID=@userID";
+        MySqlCommand setChallenger = new MySqlCommand(sql1, conB);
+        setChallenger.Parameters.AddWithValue("@userID", a1_User.userID);
+        setChallenger.Parameters.AddWithValue("@cf", t);
         conB.Open();
-        sqCommand.ExecuteNonQuery();
+        setChallenger.ExecuteNonQuery();
         conB.Close();
 
         opponentConID = conID;
@@ -1277,10 +1277,10 @@ class A1_System : TcpSession
 
         var conB = new MySqlConnection(sqServer);
         string sqlB = "SELECT * FROM user WHERE uID=@userID";
-        MySqlCommand sqCommandB = new MySqlCommand(sqlB, conB);
-        sqCommandB.Parameters.AddWithValue("@userID", f);
+        MySqlCommand getConnectionID = new MySqlCommand(sqlB, conB);
+        getConnectionID.Parameters.AddWithValue("@userID", f);
         conB.Open();
-        using (MySqlDataReader sqReader = sqCommandB.ExecuteReader())
+        using (MySqlDataReader sqReader = getConnectionID.ExecuteReader())
         {
             while (sqReader.Read())
             {
@@ -1295,11 +1295,11 @@ class A1_System : TcpSession
 
         a1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
 
-        string sql1 = "DELETE FROM mp_5 WHERE userID=@userID";
-        MySqlCommand sqCommand1 = new MySqlCommand(sql1, conB);
-        sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID);
+        string sql1 = "DELETE FROM mp_" + p + " WHERE userID=@userID";
+        MySqlCommand removePlayerFromMPTable = new MySqlCommand(sql1, conB);
+        removePlayerFromMPTable.Parameters.AddWithValue("@userID", a1_User.userID);
         conB.Open();
-        sqCommand1.ExecuteNonQuery();
+        removePlayerFromMPTable.ExecuteNonQuery();
         conB.Close();
 
         return "<notneeded/>";
@@ -1313,6 +1313,9 @@ class A1_System : TcpSession
 
     string JoinChat(string t, string dl, string f, string uid, string n)
     {
+        //ALL OF THIS IS PLACEHOLDER TESTING!
+        //Most of this will be deleted and replaced with a better solution.
+
         //TODO - Figure out the database setup for the chatrooms.
 
         var con = new MySqlConnection(sqServer);
@@ -1425,11 +1428,11 @@ class A1_System : TcpSession
         teamSide = 5;
 
         var con = new MySqlConnection(sqServer);
-        string sql = "SELECT * FROM mp_5 WHERE userID=@userID";
-        MySqlCommand sqCommand = new MySqlCommand(sql, con);
-        sqCommand.Parameters.AddWithValue("@userID", a1_User.userID);
+        string sql = "SELECT * FROM mp_" + plugin + " WHERE userID=@userID";
+        MySqlCommand getMPInfo = new MySqlCommand(sql, con);
+        getMPInfo.Parameters.AddWithValue("@userID", a1_User.userID);
         con.Open();
-        using (MySqlDataReader sqReader = sqCommand.ExecuteReader())
+        using (MySqlDataReader sqReader = getMPInfo.ExecuteReader())
         {
             while (sqReader.Read())
             {   
@@ -1445,7 +1448,7 @@ class A1_System : TcpSession
 
         if(!exists || challenger == 0)
         {
-            var sql1 = "INSERT INTO mp_5(username, userID, challenge, connectionID, playerInfo, ready, score) VALUES(@u, @uID, @c, @cID, @pi, 0, 0)";
+            var sql1 = "INSERT INTO mp_" + plugin + "(username, userID, challenge, connectionID, playerInfo, ready, score) VALUES(@u, @uID, @c, @cID, @pi, 0, 0)";
             con.Open();
             using (var cmd = new MySqlCommand(sql1, con))
             {
@@ -1463,26 +1466,30 @@ class A1_System : TcpSession
             con.Close();
         }
 
-        if(c == "0" && challenger != 1)
+        if(c == "0" && challenge != 1)
         {
             string opponentName = "";
             string opponentInfo = "";
             int i = 0;
             while(i < 10)
             {
-                string sqlC = "SELECT * FROM mp_5 WHERE userID!=@userID AND challenge=0";
-                MySqlCommand sqCommandC = new MySqlCommand(sqlC, con);
-                sqCommandC.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
+                string sqlC = "SELECT * FROM mp_" + plugin + " WHERE userID!=@userID AND challenge=0";
+                MySqlCommand getOpenChallenger = new MySqlCommand(sqlC, con);
+                getOpenChallenger.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
                 con.Open();
-                using (MySqlDataReader sqReader = sqCommandC.ExecuteReader())
+                using (MySqlDataReader sqReader = getOpenChallenger.ExecuteReader())
                 {
 
                     while (sqReader.Read())
                     {
-                        opponentUID = int.Parse(sqReader["userID"].ToString());
-                        opponentConID = sqReader["connectionID"].ToString();
-                        opponentName = sqReader["username"].ToString();
-                        opponentInfo = sqReader["playerInfo"].ToString();
+                        if(int.Parse(sqReader["challenge"].ToString()) == 0)
+                        {
+                            opponentUID = int.Parse(sqReader["userID"].ToString());
+                            opponentConID = sqReader["connectionID"].ToString();
+                            opponentName = sqReader["username"].ToString();
+                            opponentInfo = sqReader["playerInfo"].ToString();  
+                        }
+
                     }
 
                     con.Close();
@@ -1496,14 +1503,16 @@ class A1_System : TcpSession
 
             if(opponentConID != "")
             {
-                string sql1 = "UPDATE mp_5 SET challenge = 1 WHERE userID=@userID";
-                MySqlCommand sqCommand1 = new MySqlCommand(sql1, con);
-                sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID);
-                MySqlCommand sqCommand2 = new MySqlCommand(sql1, con);
-                sqCommand2.Parameters.AddWithValue("@userID", opponentUID);
+                string sql1 = "UPDATE mp_" + plugin + " SET challenge=1, challenger=@challenger WHERE userID=@userID";
+                MySqlCommand setActiveToPlayer = new MySqlCommand(sql1, con);
+                setActiveToPlayer.Parameters.AddWithValue("@userID", a1_User.userID);
+                setActiveToPlayer.Parameters.AddWithValue("@challenger", opponentUID);
+                MySqlCommand setActiveToOpponent = new MySqlCommand(sql1, con);
+                setActiveToOpponent.Parameters.AddWithValue("@userID", opponentUID);
+                setActiveToOpponent.Parameters.AddWithValue("@challenger", a1_User.userID);
                 con.Open();
-                sqCommand1.ExecuteNonQuery();
-                sqCommand2.ExecuteNonQuery();
+                setActiveToPlayer.ExecuteNonQuery();
+                setActiveToOpponent.ExecuteNonQuery();
                 con.Close();
 
                 var responseStream1 = new MemoryStream();
@@ -1544,19 +1553,37 @@ class A1_System : TcpSession
             }else
             {
                 con.Open();
-                using (MySqlDataReader sqReader = sqCommand.ExecuteReader())
+                using (MySqlDataReader sqReader = getMPInfo.ExecuteReader())
                 {
                     while (sqReader.Read())
                     {   
                         try{
                         challenge = int.Parse(sqReader["challenge"].ToString());
                         challenger = int.Parse(sqReader["challenger"].ToString());
+                        opponentUID = int.Parse(sqReader["challenger"].ToString());
                         }catch{exists = false;}
                     }
                     con.Close();
                 }
+
                 if(challenge == 1)
                 {
+
+                    string sql2 = "SELECT * FROM mp_" + plugin + " WHERE userID=@userID";
+                    MySqlCommand getOpponentConnectionID = new MySqlCommand(sql2, con);
+                    getOpponentConnectionID.Parameters.AddWithValue("@userID", opponentUID);
+                    con.Open();
+                    using (MySqlDataReader sqReader = getOpponentConnectionID.ExecuteReader())
+                    {
+                        while (sqReader.Read())
+                        {   
+                            try{
+                            opponentConID = sqReader["connectionID"].ToString();
+                            }catch{exists = false;}
+                        }
+                        con.Close();
+                    }
+
                     var responseStream2 = new MemoryStream();
                     using (XmlWriter writer = XmlWriter.Create(responseStream2, settings))
                     {
@@ -1586,10 +1613,10 @@ class A1_System : TcpSession
             string opponentInfo = "";
 
             string sqlB = "SELECT * FROM user WHERE uID=@userID";
-            MySqlCommand sqCommandB = new MySqlCommand(sqlB, con);
-            sqCommandB.Parameters.AddWithValue("@userID", challenger.ToString());
+            MySqlCommand getOpponentConnectionID = new MySqlCommand(sqlB, con);
+            getOpponentConnectionID.Parameters.AddWithValue("@userID", challenger.ToString());
             con.Open();
-            using (MySqlDataReader sqReader = sqCommandB.ExecuteReader())
+            using (MySqlDataReader sqReader = getOpponentConnectionID.ExecuteReader())
             {
                 FKUser opponent = new FKUser();
 
@@ -1606,11 +1633,11 @@ class A1_System : TcpSession
                 con.Close();
             }
 
-            string sqlC = "SELECT * FROM mp_5 WHERE userID=@userID";
-            MySqlCommand sqCommandC = new MySqlCommand(sqlC, con);
-            sqCommandC.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
+            string sqlC = "SELECT * FROM mp_" + plugin + " WHERE userID=@userID";
+            MySqlCommand getChallengerInfo = new MySqlCommand(sqlC, con);
+            getChallengerInfo.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
             con.Open();
-            using (MySqlDataReader sqReader = sqCommandC.ExecuteReader())
+            using (MySqlDataReader sqReader = getChallengerInfo.ExecuteReader())
             {
 
                 while (sqReader.Read())
@@ -1621,20 +1648,20 @@ class A1_System : TcpSession
                 con.Close();
             }
 
-            string sql1 = "UPDATE mp_5 SET challengerInfo = @ci WHERE userID=@userID";
-            MySqlCommand sqCommand1 = new MySqlCommand(sql1, con);
-            sqCommand1.Parameters.AddWithValue("@userID", challenger);
-            sqCommand1.Parameters.AddWithValue("@ci", pr);
+            string sql1 = "UPDATE mp_" + plugin + " SET challengerInfo = @ci WHERE userID=@userID";
+            MySqlCommand setPlayerInfoForOpponent = new MySqlCommand(sql1, con);
+            setPlayerInfoForOpponent.Parameters.AddWithValue("@userID", challenger);
+            setPlayerInfoForOpponent.Parameters.AddWithValue("@ci", pr);
             con.Open();
-            sqCommand1.ExecuteNonQuery();
+            setPlayerInfoForOpponent.ExecuteNonQuery();
             con.Close();
 
-            string sql2 = "UPDATE mp_5 SET connectionID = @cID WHERE userID=@userID";
-            MySqlCommand sqCommand2 = new MySqlCommand(sql2, con);
-            sqCommand2.Parameters.AddWithValue("@userID", a1_User.userID);
-            sqCommand2.Parameters.AddWithValue("@cID", this.Id);
+            string sql2 = "UPDATE mp_" + plugin + " SET connectionID = @cID WHERE userID=@userID";
+            MySqlCommand setConnectionIDForUser = new MySqlCommand(sql2, con);
+            setConnectionIDForUser.Parameters.AddWithValue("@userID", a1_User.userID);
+            setConnectionIDForUser.Parameters.AddWithValue("@cID", this.Id);
             con.Open();
-            sqCommand2.ExecuteNonQuery();
+            setConnectionIDForUser.ExecuteNonQuery();
             con.Close();
 
             opponentConID = conID;
@@ -1684,14 +1711,17 @@ class A1_System : TcpSession
     {
         var con = new MySqlConnection(sqServer);
 
-        string sql1 = "UPDATE mp_5 SET ready = @r WHERE userID=@userID";
-        MySqlCommand sqCommand1 = new MySqlCommand(sql1, con);
-        sqCommand1.Parameters.AddWithValue("@r", 1);
-        sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID);
+        string sql1 = "UPDATE mp_" + plugin + " SET ready = @r WHERE userID=@userID";
+        MySqlCommand setReady = new MySqlCommand(sql1, con);
+        setReady.Parameters.AddWithValue("@r", 1);
+        setReady.Parameters.AddWithValue("@userID", a1_User.userID);
         con.Open();
-        sqCommand1.ExecuteNonQuery();
+        setReady.ExecuteNonQuery();
         con.Close();
 
+        //It seems that each game has it's own unique way of handling this.
+
+        // ---------------------------- Plugin 5 (Soccer) --------------------------- \\
         var responseStream = new MemoryStream();
         XmlWriterSettings settings = new XmlWriterSettings();
         settings.OmitXmlDeclaration = true;
@@ -1707,17 +1737,13 @@ class A1_System : TcpSession
             {   
                 if(roundCount < 10)
                 {
-                    if(roundCount == 5)
-                    {
-                        writer.WriteStartElement("nr");
-                        writer.WriteEndElement();
-                    }
-
                     if(roundCount == 0 || roundCount == 4)
                     { 
                         writer.WriteStartElement("cc");
                         if(teamSide == 5)
                         {
+                            /* Initally assigning teams based on the userID of the players as it is
+                            an easy and predictable way to assign the teams for both sides. */
                             if(a1_User.userID < opponentUID)
                             {
                                 teamSide = 1;
@@ -1728,6 +1754,7 @@ class A1_System : TcpSession
                                 writer.WriteAttributeString("c", "0");
                             }
                         }else{
+                            //Swaps teams for second round.
                             switch(teamSide)
                             {
                                 case 0:
@@ -1741,12 +1768,8 @@ class A1_System : TcpSession
                         writer.WriteEndElement();
                     }
 
-                    if(roundCount != 5)
-                    {
-                        writer.WriteStartElement("nr");
-                        writer.WriteEndElement();
-                    }
-
+                    writer.WriteStartElement("nr");
+                    writer.WriteEndElement();
 
                     if(roundCount == 0)
                     {
@@ -1755,7 +1778,6 @@ class A1_System : TcpSession
                     }
 
                     roundCount += 1;
-                    Console.WriteLine(roundCount);
                 }else
                 {
                     int playerScore = 0;
@@ -1763,22 +1785,21 @@ class A1_System : TcpSession
 
                     //Get the player's score.
                     string sql3 = "SELECT score FROM mp_5 WHERE userID=@userID";
-                    MySqlCommand sqCommand3 = new MySqlCommand(sql3, con);
-                    sqCommand3.Parameters.AddWithValue("@userID", a1_User.userID);
+                    MySqlCommand getPlayerScore = new MySqlCommand(sql3, con);
+                    getPlayerScore.Parameters.AddWithValue("@userID", a1_User.userID);
 
-                    string sql4 = "SELECT score FROM mp_5 WHERE userID=@userID";
-                    MySqlCommand sqCommand4 = new MySqlCommand(sql3, con);
-                    sqCommand4.Parameters.AddWithValue("@userID", opponentUID);
+                    MySqlCommand getOpponentScore = new MySqlCommand(sql3, con);
+                    getOpponentScore.Parameters.AddWithValue("@userID", opponentUID);
 
                     con.Open();
-                    using (MySqlDataReader sqReader = sqCommand3.ExecuteReader())
+                    using (MySqlDataReader sqReader = getPlayerScore.ExecuteReader())
                     {
                         while (sqReader.Read())
                         {
                             playerScore = int.Parse(sqReader["score"].ToString());
                         }
                     }
-                    using (MySqlDataReader sqReader = sqCommand4.ExecuteReader())
+                    using (MySqlDataReader sqReader = getOpponentScore.ExecuteReader())
                     {
                         while (sqReader.Read())
                         {
@@ -1788,7 +1809,7 @@ class A1_System : TcpSession
                     con.Close();
 
                     writer.WriteStartElement("go");
-                    //The result attribute determines the coin distribution.
+                    //The result attribute seems to determine the coin distribution.
                     if(playerScore > opponentScore)
                     {
                         writer.WriteAttributeString("r", "6");
@@ -1810,14 +1831,15 @@ class A1_System : TcpSession
         }
 
         int opponentReady = 0;
+        int i = 0;
 
-        while(opponentReady == 0)
+        while(opponentReady == 0 || i < 20)
         {
-            string sql = "SELECT ready FROM mp_5 WHERE userID=@userID";
-            MySqlCommand sqCommand = new MySqlCommand(sql, con);
-            sqCommand.Parameters.AddWithValue("@userID", opponentUID);
+            string sql = "SELECT ready FROM mp_" + plugin + " WHERE userID=@userID";
+            MySqlCommand getOpponentReady = new MySqlCommand(sql, con);
+            getOpponentReady.Parameters.AddWithValue("@userID", opponentUID);
             con.Open();
-            using (MySqlDataReader sqReader = sqCommand.ExecuteReader())
+            using (MySqlDataReader sqReader = getOpponentReady.ExecuteReader())
             {
                 while (sqReader.Read())
                 {
@@ -1827,14 +1849,15 @@ class A1_System : TcpSession
             }
 
             System.Threading.Thread.Sleep(500);
+            i += 1;
         }
 
-        string sql2 = "UPDATE mp_5 SET ready = @r WHERE userID=@userID";
-        MySqlCommand sqCommand2 = new MySqlCommand(sql2, con);
-        sqCommand2.Parameters.AddWithValue("@r", 0);
-        sqCommand2.Parameters.AddWithValue("@userID", a1_User.userID);
+        string sql2 = "UPDATE mp_" + plugin + " SET ready = @r WHERE userID=@userID";
+        MySqlCommand setReadyToZero = new MySqlCommand(sql2, con);
+        setReadyToZero.Parameters.AddWithValue("@r", 0);
+        setReadyToZero.Parameters.AddWithValue("@userID", a1_User.userID);
         con.Open();
-        sqCommand2.ExecuteNonQuery();
+        setReadyToZero.ExecuteNonQuery();
         con.Close();
 
         return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
@@ -1897,11 +1920,11 @@ class A1_System : TcpSession
 
         var con = new MySqlConnection(sqServer);
 
-        string sql1 = "DELETE FROM mp_5 WHERE userID=@userID";
-        MySqlCommand sqCommand1 = new MySqlCommand(sql1, con);
-        sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID);
+        string sql1 = "DELETE FROM mp_" + plugin + " WHERE userID=@userID";
+        MySqlCommand removePlayerFromMPTable = new MySqlCommand(sql1, con);
+        removePlayerFromMPTable.Parameters.AddWithValue("@userID", a1_User.userID);
         con.Open();
-        sqCommand1.ExecuteNonQuery();
+        removePlayerFromMPTable.ExecuteNonQuery();
         con.Close();
 
         return "<notneeded />";
@@ -1918,9 +1941,36 @@ class A1_System : TcpSession
         {
             writer.WriteStartElement("h" + plugin + "_0");
 
-            writer.WriteStartElement("pa");
+            bool isOpponentStillWaiting = false;
 
-            writer.WriteEndElement();
+            using (var con = new MySqlConnection(sqServer))
+            {
+                con.Open();
+
+                using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM mp_" + plugin + " WHERE userID=@uID", con))
+                {
+                    cmd.Parameters.AddWithValue("@uID", opponentUID);
+                    int count = Convert.ToInt32(cmd.ExecuteScalar());
+                    if(count == 1)
+                    {
+                        isOpponentStillWaiting = true;
+                    }
+                }
+
+                con.Close();
+            }
+
+            if(isOpponentStillWaiting)
+            {
+                writer.WriteStartElement("pa");
+                writer.WriteEndElement();
+            }else
+            {
+                writer.WriteStartElement("go");
+                writer.WriteAttributeString("r", "5");
+                writer.WriteEndElement();   
+            }
+
             writer.WriteEndElement();
             writer.Flush();
             writer.Close();
@@ -2028,6 +2078,7 @@ class A1_System : TcpSession
 
             writer.WriteEndElement();
 
+            // For some reason, the Block Shot commmand is in charge of setting the score.
             switch(c)
             {
                 //Missed (Above net)
@@ -2047,31 +2098,31 @@ class A1_System : TcpSession
             //Award a point to the winner of the round.
             var con = new MySqlConnection(sqServer);
             string sql1 = "UPDATE mp_5 SET score = score + 1 WHERE userID=@userID";
-            MySqlCommand sqCommand = new MySqlCommand(sql1, con);
+            MySqlCommand updatePlayerScore = new MySqlCommand(sql1, con);
             if(blocked)
-                sqCommand.Parameters.AddWithValue("@userID", a1_User.userID);
+                updatePlayerScore.Parameters.AddWithValue("@userID", a1_User.userID);
             else
-                sqCommand.Parameters.AddWithValue("@userID", opponentUID);
+                updatePlayerScore.Parameters.AddWithValue("@userID", opponentUID);
 
             //Get the player's score.
             string sql2 = "SELECT score FROM mp_5 WHERE userID=@userID";
-            MySqlCommand sqCommand1 = new MySqlCommand(sql2, con);
-            sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID);
+            MySqlCommand getPlayerScore = new MySqlCommand(sql2, con);
+            getPlayerScore.Parameters.AddWithValue("@userID", a1_User.userID);
 
             string sql3 = "SELECT score FROM mp_5 WHERE userID=@userID";
-            MySqlCommand sqCommand2 = new MySqlCommand(sql3, con);
-            sqCommand2.Parameters.AddWithValue("@userID", opponentUID);
+            MySqlCommand getOpponentScore = new MySqlCommand(sql3, con);
+            getOpponentScore.Parameters.AddWithValue("@userID", opponentUID);
 
             con.Open();
-            sqCommand.ExecuteNonQuery();
-            using (MySqlDataReader sqReader = sqCommand1.ExecuteReader())
+            updatePlayerScore.ExecuteNonQuery();
+            using (MySqlDataReader sqReader = getPlayerScore.ExecuteReader())
             {
                 while (sqReader.Read())
                 {
                     playerScore = int.Parse(sqReader["score"].ToString());
                 }
             }
-            using (MySqlDataReader sqReader = sqCommand2.ExecuteReader())
+            using (MySqlDataReader sqReader = getOpponentScore.ExecuteReader())
             {
                 while (sqReader.Read())
                 {
@@ -2349,10 +2400,10 @@ class A1_System : TcpSession
         string buddyList = "";
         var con = new MySqlConnection(sqServer);
         string sql = "SELECT buddyList FROM user WHERE uID=@userID";
-        MySqlCommand sqCommand = new MySqlCommand(sql, con);
-        sqCommand.Parameters.AddWithValue("@userID", a1_User.userID);
+        MySqlCommand selectBuddyList = new MySqlCommand(sql, con);
+        selectBuddyList.Parameters.AddWithValue("@userID", a1_User.userID);
         con.Open();
-        using (MySqlDataReader sqReader = sqCommand.ExecuteReader())
+        using (MySqlDataReader sqReader = selectBuddyList.ExecuteReader())
         {
             while (sqReader.Read())
             {
@@ -2372,10 +2423,10 @@ class A1_System : TcpSession
 
                 var conB = new MySqlConnection(sqServer);
                 string sqlB = "SELECT * FROM user WHERE uID=@userID";
-                MySqlCommand sqCommandB = new MySqlCommand(sqlB, conB);
-                sqCommandB.Parameters.AddWithValue("@userID", buddy);
+                MySqlCommand getBuddy = new MySqlCommand(sqlB, conB);
+                getBuddy.Parameters.AddWithValue("@userID", buddy);
                 conB.Open();
-                using (MySqlDataReader sqReader = sqCommandB.ExecuteReader())
+                using (MySqlDataReader sqReader = getBuddy.ExecuteReader())
                 {
 
                     while (sqReader.Read())
