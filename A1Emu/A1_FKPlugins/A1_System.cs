@@ -59,10 +59,10 @@ class A1_System : TcpSession
         }
 
         string[] commands = a1_Parser.ParseReceivedMessage(message);
-        string[] routingString = a1_Parser.ParseRoutingStrings(message);
         foreach (string command in commands)
         {
             string[] commandInfo = a1_Parser.ParseCommand(command);
+            string[] routingString = a1_Parser.ParseRoutingStrings(command);
             switch (commandInfo[0])
             {
                 // ----------------------------- Plugin 0 (Core) ---------------------------- \\
@@ -194,7 +194,7 @@ class A1_System : TcpSession
             byte[] b3 = d.SelectMany(a => a).ToArray();
 
             Console.WriteLine(responseString);
-            Send(b3, 0, b3.Length);
+            SendAsync(b3, 0, b3.Length);
         }
     }
 
@@ -1466,147 +1466,7 @@ class A1_System : TcpSession
             con.Close();
         }
 
-        if(c == "0" && challenge != 1)
-        {
-            string opponentName = "";
-            string opponentInfo = "";
-            int i = 0;
-            while(i < 10)
-            {
-                string sqlC = "SELECT * FROM mp_" + plugin + " WHERE userID!=@userID AND challenge=0";
-                MySqlCommand getOpenChallenger = new MySqlCommand(sqlC, con);
-                getOpenChallenger.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
-                con.Open();
-                using (MySqlDataReader sqReader = getOpenChallenger.ExecuteReader())
-                {
-
-                    while (sqReader.Read())
-                    {
-                        if(int.Parse(sqReader["challenge"].ToString()) == 0)
-                        {
-                            opponentUID = int.Parse(sqReader["userID"].ToString());
-                            opponentConID = sqReader["connectionID"].ToString();
-                            opponentName = sqReader["username"].ToString();
-                            opponentInfo = sqReader["playerInfo"].ToString();  
-                        }
-
-                    }
-
-                    con.Close();
-                }
-                if(opponentConID == "")
-                {
-                    System.Threading.Thread.Sleep(1000);
-                    i += 1;
-                }else {i = 10;}
-            }
-
-            if(opponentConID != "")
-            {
-                string sql1 = "UPDATE mp_" + plugin + " SET challenge=1, challenger=@challenger WHERE userID=@userID";
-                MySqlCommand setActiveToPlayer = new MySqlCommand(sql1, con);
-                setActiveToPlayer.Parameters.AddWithValue("@userID", a1_User.userID);
-                setActiveToPlayer.Parameters.AddWithValue("@challenger", opponentUID);
-                MySqlCommand setActiveToOpponent = new MySqlCommand(sql1, con);
-                setActiveToOpponent.Parameters.AddWithValue("@userID", opponentUID);
-                setActiveToOpponent.Parameters.AddWithValue("@challenger", a1_User.userID);
-                con.Open();
-                setActiveToPlayer.ExecuteNonQuery();
-                setActiveToOpponent.ExecuteNonQuery();
-                con.Close();
-
-                var responseStream1 = new MemoryStream();
-                using (XmlWriter writer = XmlWriter.Create(responseStream1, settings))
-                {
-                    writer.WriteStartElement("h" + plugin + "_0");
-
-                    writer.WriteStartElement("oj");
-                    writer.WriteAttributeString("n", a1_User.username);
-                    writer.WriteAttributeString("pr", pr);
-                    writer.WriteEndElement();
-                    
-                    writer.WriteEndElement();
-                    writer.Flush();
-                    writer.Close();
-                }
-                a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
-
-                var responseStream2 = new MemoryStream();
-                using (XmlWriter writer = XmlWriter.Create(responseStream2, settings))
-                {
-                    writer.WriteStartElement("h" + plugin + "_0");
-
-                    writer.WriteStartElement("jn");
-                    writer.WriteAttributeString("r", "0");
-                    writer.WriteEndElement();
-                
-                    writer.WriteStartElement("oj");
-                    writer.WriteAttributeString("n", opponentName);
-                    writer.WriteAttributeString("pr", opponentInfo);
-                    writer.WriteEndElement();
-                    
-                    writer.WriteEndElement();
-                    writer.Flush();
-                    writer.Close();
-                }
-                return System.Text.ASCIIEncoding.ASCII.GetString(responseStream2.ToArray());
-            }else
-            {
-                con.Open();
-                using (MySqlDataReader sqReader = getMPInfo.ExecuteReader())
-                {
-                    while (sqReader.Read())
-                    {   
-                        try{
-                        challenge = int.Parse(sqReader["challenge"].ToString());
-                        challenger = int.Parse(sqReader["challenger"].ToString());
-                        opponentUID = int.Parse(sqReader["challenger"].ToString());
-                        }catch{exists = false;}
-                    }
-                    con.Close();
-                }
-
-                if(challenge == 1)
-                {
-
-                    string sql2 = "SELECT * FROM mp_" + plugin + " WHERE userID=@userID";
-                    MySqlCommand getOpponentConnectionID = new MySqlCommand(sql2, con);
-                    getOpponentConnectionID.Parameters.AddWithValue("@userID", opponentUID);
-                    con.Open();
-                    using (MySqlDataReader sqReader = getOpponentConnectionID.ExecuteReader())
-                    {
-                        while (sqReader.Read())
-                        {   
-                            try{
-                            opponentConID = sqReader["connectionID"].ToString();
-                            }catch{exists = false;}
-                        }
-                        con.Close();
-                    }
-
-                    var responseStream2 = new MemoryStream();
-                    using (XmlWriter writer = XmlWriter.Create(responseStream2, settings))
-                    {
-                        writer.WriteStartElement("h" + plugin + "_0");
-
-                        writer.WriteStartElement("jn");
-                        writer.WriteAttributeString("r", "0");
-                        writer.WriteEndElement();
-                    
-                        writer.WriteStartElement("oj");
-                        writer.WriteAttributeString("n", opponentName);
-                        writer.WriteAttributeString("pr", opponentInfo);
-                        writer.WriteEndElement();
-                        
-                        writer.WriteEndElement();
-                        writer.Flush();
-                        writer.Close();
-                    }
-                    return System.Text.ASCIIEncoding.ASCII.GetString(responseStream2.ToArray());
-                }else return "<failedsotimeout/>";
-            }
-            
-        }else if(challenge == 1)
+        if(challenge == 1)
         {
             string conID = "";
             string opponentName = "";
@@ -1833,7 +1693,7 @@ class A1_System : TcpSession
         int opponentReady = 0;
         int i = 0;
 
-        while(opponentReady == 0 || i < 20)
+        while(opponentReady == 0)
         {
             string sql = "SELECT ready FROM mp_" + plugin + " WHERE userID=@userID";
             MySqlCommand getOpponentReady = new MySqlCommand(sql, con);
@@ -1848,8 +1708,12 @@ class A1_System : TcpSession
                 con.Close();
             }
 
-            System.Threading.Thread.Sleep(500);
             i += 1;
+            System.Threading.Thread.Sleep(500);
+
+            if(i == 20){
+                opponentReady = 1;
+            }
         }
 
         string sql2 = "UPDATE mp_" + plugin + " SET ready = @r WHERE userID=@userID";
@@ -1920,12 +1784,17 @@ class A1_System : TcpSession
 
         var con = new MySqlConnection(sqServer);
 
-        string sql1 = "DELETE FROM mp_" + plugin + " WHERE userID=@userID";
-        MySqlCommand removePlayerFromMPTable = new MySqlCommand(sql1, con);
-        removePlayerFromMPTable.Parameters.AddWithValue("@userID", a1_User.userID);
-        con.Open();
-        removePlayerFromMPTable.ExecuteNonQuery();
-        con.Close();
+        try{
+            string sql1 = "DELETE FROM mp_" + plugin + " WHERE userID=@userID";
+            MySqlCommand removePlayerFromMPTable = new MySqlCommand(sql1, con);
+            removePlayerFromMPTable.Parameters.AddWithValue("@userID", a1_User.userID);
+            con.Open();
+            removePlayerFromMPTable.ExecuteNonQuery();
+            con.Close();
+        }catch(MySqlConnector.MySqlException)
+        {
+            Console.WriteLine("[Error] Couldn't find user in MP table!");
+        }
 
         return "<notneeded />";
     }
