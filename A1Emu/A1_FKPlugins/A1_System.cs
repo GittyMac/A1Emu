@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 using System.Xml;
 using MySqlConnector;
 using NetCoreServer;
@@ -45,7 +46,7 @@ class A1_System : TcpSession
         serverDirectory = directory;
     }
 
-    protected override void OnReceived(byte[] buffer, long offset, long size)
+    protected override async void OnReceived(byte[] buffer, long offset, long size)
     {
         string message = Encoding.ASCII.GetString(buffer, (int)offset, (int)size - 1);
         Console.WriteLine("[0 - System - " + this.Id + "] Recieved: " + message);
@@ -156,7 +157,7 @@ class A1_System : TcpSession
                             break;
                         //General Multiplayer
                         default:
-                            responses.Add(JoinGame(commandInfo[1], commandInfo[2], routingString[1]));
+                            responses.Add(await JoinGame(commandInfo[1], commandInfo[2], routingString[1]));
                             break;
                     }
                     break;
@@ -166,7 +167,7 @@ class A1_System : TcpSession
                     break;
                     
                 case "rp":
-                    responses.Add(ReadyPlay(commandInfo[1], routingString[1]));
+                    responses.Add(await ReadyPlay(commandInfo[1], routingString[1]));
                     break;
                 
                 case "ms":
@@ -1401,7 +1402,7 @@ class A1_System : TcpSession
     //                            Multiplayer (Generic)                           \\
     // -------------------------------------------------------------------------- \\
 
-    string JoinGame(string pr, string c, string plugin)
+    async Task<String> JoinGame(string pr, string c, string plugin)
     {
         var responseStream = new MemoryStream();
         XmlWriterSettings settings = new XmlWriterSettings();
@@ -1567,7 +1568,7 @@ class A1_System : TcpSession
         return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
     }
 
-    string ReadyPlay(string bid, string plugin)
+    async Task<String> ReadyPlay(string bid, string plugin)
     {
         var con = new MySqlConnection(sqServer);
 
@@ -1709,7 +1710,7 @@ class A1_System : TcpSession
             }
 
             i += 1;
-            System.Threading.Thread.Sleep(500);
+            await Task.Delay(500);
 
             if(i == 20){
                 opponentReady = 1;
