@@ -122,6 +122,7 @@ class A1_System : TcpSession
                 case "bs":
                     responses.Add(BlockShot(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5]));
                     break;
+                
 
                 // ---------------------------- Plugin 7 (Galaxy) --------------------------- \\
                 case "lpv":
@@ -129,12 +130,6 @@ class A1_System : TcpSession
                     break;
                 case "vsu":
                     responses.Add(VersionStatisticsRequest(commandInfo[1]));
-                    break;
-                case "sp":
-                    if(routingString[1] == "7")
-                        responses.Add(SaveProfile(commandInfo[1]));
-                    else if(routingString[1] == "5")
-                        responses.Add(ShotParameters(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5]));
                     break;
                 case "spp":
                     responses.Add(SaveProfilePart(commandInfo[1], commandInfo[2]));
@@ -147,37 +142,44 @@ class A1_System : TcpSession
                     break;
 
                 // ----------------------- Multiplayer (Shared by all) ---------------------- \\
+                case "lv":
+                    responses.Add(LeaveGame(commandInfo[1], routingString[1]));
+                    break;
+                case "rp":
+                    responses.Add(await ReadyPlay(commandInfo[1], routingString[1]));
+                    break;
+                case "ms":
+                    responses.Add(MessageOpponent(commandInfo[1], commandInfo[2], routingString[1]));
+                    break;
+                case "pa":
+                    responses.Add(PlayAgain(commandInfo[1], routingString[1]));
+                    break;
+
+                // ---------------------------- Conflict Commands --------------------------- \\
                 case "jn":
-                    //Determines which plugin/game to join.
                     switch(routingString[1])
                     {
-                        //Chat
                         case "2":
                             responses.Add(JoinChat(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5]));
                             break;
-                        //General Multiplayer
                         default:
                             responses.Add(await JoinGame(commandInfo[1], commandInfo[2], routingString[1]));
                             break;
                     }
                     break;
-
-                case "lv":
-                    responses.Add(LeaveGame(commandInfo[1], routingString[1]));
-                    break;
-                    
-                case "rp":
-                    responses.Add(await ReadyPlay(commandInfo[1], routingString[1]));
-                    break;
-                
-                case "ms":
-                    responses.Add(MessageOpponent(commandInfo[1], commandInfo[2], routingString[1]));
-                    break;
-
-                case "pa":
-                    responses.Add(PlayAgain(commandInfo[1], routingString[1]));
+                case "sp":
+                    switch(routingString[1])
+                    {
+                        case "7":
+                            responses.Add(SaveProfile(commandInfo[1]));
+                            break;
+                        case "5":
+                            responses.Add(ShotParameters(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5]));
+                            break;
+                    }
                     break;
 
+                // -------------------------------------------------------------------------- \\
                 default:
                     responses.Add(@"<unknown />");
                     break;
@@ -1467,6 +1469,7 @@ class A1_System : TcpSession
             con.Close();
         }
 
+        //If random matchmaking.
         if(c == "0" && challenge != 1)
         {
             string opponentName = "";
@@ -1475,11 +1478,11 @@ class A1_System : TcpSession
             int i = 0;
             while(i < 30)
             {
-                string sqlC = "SELECT * FROM mp_5 WHERE userID!=@userID AND challenge=0";
-                MySqlCommand sqCommandC = new MySqlCommand(sqlC, con);
-                sqCommandC.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
+                string findOpenPlayerCommand = "SELECT * FROM mp_5 WHERE userID!=@userID AND challenge=0";
+                MySqlCommand findOpenPlayer = new MySqlCommand(findOpenPlayerCommand, con);
+                findOpenPlayer.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
                 con.Open();
-                using (MySqlDataReader sqReader = sqCommandC.ExecuteReader())
+                using (MySqlDataReader sqReader = findOpenPlayer.ExecuteReader())
                 {
 
                     while (sqReader.Read())
@@ -1493,11 +1496,11 @@ class A1_System : TcpSession
                     con.Close();
                 }
 
-                string sqlD = "SELECT * FROM mp_5 WHERE userID=@userID";
-                MySqlCommand sqCommandD = new MySqlCommand(sqlD, con);
-                sqCommandD.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
+                string findFoundPlayersCommand = "SELECT * FROM mp_5 WHERE userID=@userID";
+                MySqlCommand findFoundPlayers = new MySqlCommand(findFoundPlayersCommand, con);
+                findFoundPlayers.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
                 con.Open();
-                using (MySqlDataReader sqReader = sqCommandD.ExecuteReader())
+                using (MySqlDataReader sqReader = findFoundPlayers.ExecuteReader())
                 {
 
                     while (sqReader.Read())
@@ -1514,17 +1517,18 @@ class A1_System : TcpSession
                 }else {i = 30;}
             }
 
+            //If player found an opponent.
             if(opponentConID != ""){
-                string sql1 = "UPDATE mp_5 SET challenge = 1, challenger = @challenger WHERE userID=@userID";
-                MySqlCommand sqCommand1 = new MySqlCommand(sql1, con);
-                sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID);
-                sqCommand1.Parameters.AddWithValue("@challenger", opponentUID);
-                MySqlCommand sqCommand2 = new MySqlCommand(sql1, con);
-                sqCommand2.Parameters.AddWithValue("@userID", opponentUID);
-                sqCommand2.Parameters.AddWithValue("@challenger", a1_User.userID);
+                string setChallengeStatusCommand = "UPDATE mp_5 SET challenge = 1, challenger = @challenger WHERE userID=@userID";
+                MySqlCommand setChallengeStatusForPlayer = new MySqlCommand(setChallengeStatusCommand, con);
+                setChallengeStatusForPlayer.Parameters.AddWithValue("@userID", a1_User.userID);
+                setChallengeStatusForPlayer.Parameters.AddWithValue("@challenger", opponentUID);
+                MySqlCommand setChallengeStatusForOpponent = new MySqlCommand(setChallengeStatusCommand, con);
+                setChallengeStatusForOpponent.Parameters.AddWithValue("@userID", opponentUID);
+                setChallengeStatusForOpponent.Parameters.AddWithValue("@challenger", a1_User.userID);
                 con.Open();
-                sqCommand1.ExecuteNonQuery();
-                sqCommand2.ExecuteNonQuery();
+                setChallengeStatusForPlayer.ExecuteNonQuery();
+                setChallengeStatusForOpponent.ExecuteNonQuery();
                 con.Close();
 
                 var responseStream1 = new MemoryStream();
@@ -1562,13 +1566,13 @@ class A1_System : TcpSession
                     writer.Close();
                 }
                 return System.Text.ASCIIEncoding.ASCII.GetString(responseStream2.ToArray());
-            }else if(isPlayerFound == 1)
+            }else if(isPlayerFound == 1) //If found by another player.
             {
-                string sqlD = "SELECT * FROM mp_5 WHERE userID=@userID";
-                MySqlCommand sqCommandD = new MySqlCommand(sqlD, con);
-                sqCommandD.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
+                string getChallengerIDCommand = "SELECT * FROM mp_5 WHERE userID=@userID";
+                MySqlCommand getChallengerID = new MySqlCommand(getChallengerIDCommand, con);
+                getChallengerID.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
                 con.Open();
-                using (MySqlDataReader sqReader = sqCommandD.ExecuteReader())
+                using (MySqlDataReader sqReader = getChallengerID.ExecuteReader())
                 {
 
                     while (sqReader.Read())
@@ -1579,11 +1583,11 @@ class A1_System : TcpSession
                     con.Close();
                 }
 
-                string sqlC = "SELECT * FROM mp_" + plugin + " WHERE userID=@userID";
-                MySqlCommand getChallengerInfo = new MySqlCommand(sqlC, con);
-                getChallengerInfo.Parameters.AddWithValue("@userID", opponentUID);
+                string getChallengerCIDCommand = "SELECT * FROM mp_" + plugin + " WHERE userID=@userID";
+                MySqlCommand getChallengerCID = new MySqlCommand(getChallengerCIDCommand, con);
+                getChallengerCID.Parameters.AddWithValue("@userID", opponentUID);
                 con.Open();
-                using (MySqlDataReader sqReader = getChallengerInfo.ExecuteReader())
+                using (MySqlDataReader sqReader = getChallengerCID.ExecuteReader())
                 {
 
                     while (sqReader.Read())
@@ -1598,6 +1602,7 @@ class A1_System : TcpSession
             else {return "<mm_timeout />"; }
         }
 
+        //If joining from invite.
         if(challenge == 1)
         {
             string conID = "";
