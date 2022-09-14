@@ -141,6 +141,47 @@ class A1_System : TcpSession
                     responses.Add(GetLeaderboardStats(commandInfo[1]));
                     break;
 
+                // ---------------------------- Plugin 10 (Trunk) --------------------------- \\
+                case "gua":
+                    responses.Add(GetUserAssets());
+                    break;
+
+                case "glb":
+                    responses.Add(GetLootBalance());
+                    break;
+
+                case "gsl":
+                    //GetSplashList (Not needed)
+                    break;
+                
+                case "gil":
+                    responses.Add(GetProductList("i"));
+                    break;
+
+                case "gfl":
+                    responses.Add(GetProductList("f"));
+                    break;
+
+                case "gcl":
+                    responses.Add(GetProductList("c"));
+                    break;
+
+                case "gjl":
+                    responses.Add(GetProductList("j"));
+                    break;
+                
+                case "gml":
+                    responses.Add(GetProductList("m"));
+                    break;
+
+                case "gutc":
+                    responses.Add(GetUserTransactionCount());
+                    break;
+
+                case "bf":
+                    //responses.Add(BuyFamiliar(commandInfo[1], commandInfo[2]));
+                    break;
+
                 // ----------------------- Multiplayer (Shared by all) ---------------------- \\
                 case "lv":
                     responses.Add(LeaveGame(commandInfo[1], routingString[1]));
@@ -2394,6 +2435,251 @@ class A1_System : TcpSession
             writer.Close();
         }
 
+        return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+    }
+
+    // -------------------------------------------------------------------------- \\
+    //                              Plugin 10 - Trunk                             \\
+    // -------------------------------------------------------------------------- \\
+
+    public string GetUserAssets()
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h10_0");
+
+            writer.WriteStartElement("gua");
+
+            // XmlDocument profile = new XmlDocument();
+
+            // var familiarNodes = profile.SelectNodes("/profile/trunk/familiars/familiar");
+            // foreach (XmlNode node in familiarNodes)
+            // {
+            //     writer.WriteStartElement("f");
+            //     writer.WriteAttributeString("id", node.Attributes["id"].Value);
+            //     writer.WriteAttributeString("p", node.Attributes["start"].Value);
+            //     writer.WriteAttributeString("c", node.Attributes["time"].Value);
+
+            //     writer.WriteEndElement();
+            // }
+
+            // var jammerNodes = profile.SelectNodes("/profile/trunk/jammers/jammer");
+            // foreach (XmlNode node in familiarNodes)
+            // {
+            //     writer.WriteStartElement("f");
+            //     writer.WriteAttributeString("id", node.Attributes["id"].Value);
+            //     writer.WriteAttributeString("p", node.Attributes["start"].Value);
+            //     writer.WriteAttributeString("c", node.Attributes["time"].Value);
+
+            //     writer.WriteEndElement();
+            // }
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+        return "<gua />";
+    }
+
+    public string GetLootBalance()
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h10_0");
+            writer.WriteStartElement("glb");
+
+            //Loot permanently set to 2500.
+            writer.WriteAttributeString("b", "2500");
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+        return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+    }
+
+    public string GetProductList(string productType)
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+
+
+        var con = new MySqlConnection(sqServer);
+
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h10_0");
+            
+            string sql = "SELECT * FROM t_items";
+
+            switch(productType)
+            {
+                case "i":
+                    writer.WriteStartElement("gil");
+                    sql = "SELECT * FROM t_items";
+                    MySqlCommand getItems = new MySqlCommand(sql, con);
+                    con.Open();
+                    using (MySqlDataReader sqReader = getItems.ExecuteReader())
+                    {
+                        while (sqReader.Read())
+                        {   writer.WriteStartElement("i");
+                            writer.WriteAttributeString("rid", sqReader["rid"].ToString());
+                            writer.WriteAttributeString("id", sqReader["id"].ToString());
+                            writer.WriteAttributeString("c", sqReader["cost"].ToString());
+                            writer.WriteAttributeString("q", "1");
+                            writer.WriteAttributeString("d", "");
+                            writer.WriteEndElement();
+                        }
+                        con.Close();
+                    }
+                    break;
+                
+                case "f":
+                    writer.WriteStartElement("gfl");
+                    sql = "SELECT * FROM t_familiar";
+                    MySqlCommand getFamiliars = new MySqlCommand(sql, con);
+                    con.Open();
+                    using (MySqlDataReader sqReader = getFamiliars.ExecuteReader())
+                    {
+                        while (sqReader.Read())
+                        {   writer.WriteStartElement("f");
+                            writer.WriteAttributeString("rid", sqReader["rid"].ToString());
+                            writer.WriteAttributeString("id", sqReader["id"].ToString());
+                            writer.WriteAttributeString("c", sqReader["cost"].ToString());
+                            writer.WriteAttributeString("dc", sqReader["discountedCost"].ToString());
+                            writer.WriteAttributeString("h", sqReader["duration"].ToString());
+                            writer.WriteAttributeString("d", "");
+                            writer.WriteEndElement();
+                        }
+                        con.Close();
+                    }
+                    break;
+
+                case "j":
+                    writer.WriteStartElement("gjl");
+                    sql = "SELECT * FROM t_jammers";
+                    MySqlCommand getJammers = new MySqlCommand(sql, con);
+                    con.Open();
+                    using (MySqlDataReader sqReader = getJammers.ExecuteReader())
+                    {
+                        while (sqReader.Read())
+                        {   writer.WriteStartElement("j");
+                            writer.WriteAttributeString("rid", sqReader["rid"].ToString());
+                            writer.WriteAttributeString("id", sqReader["id"].ToString());
+                            writer.WriteAttributeString("c", sqReader["cost"].ToString());
+                            writer.WriteAttributeString("q", sqReader["quantity"].ToString());
+                            writer.WriteAttributeString("d", "");
+                            writer.WriteEndElement();
+                        }
+                        con.Close();
+                    }
+                    break;
+
+                case "m":
+                    writer.WriteStartElement("gml");
+                    sql = "SELECT * FROM t_moods";
+                    MySqlCommand getMoods = new MySqlCommand(sql, con);
+                    con.Open();
+                    using (MySqlDataReader sqReader = getMoods.ExecuteReader())
+                    {
+                        while (sqReader.Read())
+                        {   writer.WriteStartElement("m");
+                            writer.WriteAttributeString("rid", sqReader["rid"].ToString());
+                            writer.WriteAttributeString("id", sqReader["id"].ToString());
+                            writer.WriteAttributeString("c", sqReader["cost"].ToString());
+                            writer.WriteAttributeString("q", "1");
+                            writer.WriteAttributeString("d", "");
+                            writer.WriteEndElement();
+                        }
+                        con.Close();
+                    }
+                    break;
+                
+                case "c":
+                    writer.WriteStartElement("gcl");
+                    sql = "SELECT * FROM t_cleaning";
+                    MySqlCommand getCleanings = new MySqlCommand(sql, con);
+                    con.Open();
+                    using (MySqlDataReader sqReader = getCleanings.ExecuteReader())
+                    {
+                        while (sqReader.Read())
+                        {   writer.WriteStartElement("c");
+                            writer.WriteAttributeString("rid", sqReader["rid"].ToString());
+                            writer.WriteAttributeString("id", sqReader["id"].ToString());
+                            writer.WriteAttributeString("c", sqReader["cost"].ToString());
+                            writer.WriteAttributeString("q", "1");
+                            writer.WriteAttributeString("d", "");
+                            writer.WriteEndElement();
+                        }
+                        con.Close();
+                    }
+                    break;
+            }
+            
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+        return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+    }
+
+    public string GetUserTransactionCount()
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+
+        var con = new MySqlConnection(sqServer);
+
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h10_0");
+            
+            string sql = "SELECT * FROM user";
+
+            writer.WriteStartElement("gutc");
+
+            string count = "0";
+            
+            MySqlCommand getCleanings = new MySqlCommand(sql, con);
+            con.Open();
+            using (MySqlDataReader sqReader = getCleanings.ExecuteReader())
+            {
+                while (sqReader.Read())
+                {
+                    count = sqReader["transactionCount"].ToString();
+                }
+                con.Close();
+            }
+
+            writer.WriteAttributeString("c", count);
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
         return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
     }
 
