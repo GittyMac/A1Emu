@@ -179,7 +179,27 @@ class A1_System : TcpSession
                     break;
 
                 case "bf":
-                    //responses.Add(BuyFamiliar(commandInfo[1], commandInfo[2]));
+                    responses.Add(BuyProduct(commandInfo[1], commandInfo[2], "f"));
+                    break;
+
+                case "bi":
+                    responses.Add(BuyProduct(commandInfo[1], commandInfo[2], "i"));
+                    break;
+
+                case "bc":
+                    responses.Add(BuyProduct(commandInfo[1], commandInfo[2], "c"));
+                    break;
+
+                case "bj":
+                    responses.Add(BuyProduct(commandInfo[1], commandInfo[2], "j"));
+                    break;
+
+                case "bm":
+                    responses.Add(BuyProduct(commandInfo[1], commandInfo[2], "m"));
+                    break;
+
+                case "gut":
+                    responses.Add(GetUserTransactions());
                     break;
 
                 // ----------------------- Multiplayer (Shared by all) ---------------------- \\
@@ -2574,7 +2594,7 @@ class A1_System : TcpSession
 
                 case "j":
                     writer.WriteStartElement("gjl");
-                    sql = "SELECT * FROM t_jammers";
+                    sql = "SELECT * FROM t_jammer";
                     MySqlCommand getJammers = new MySqlCommand(sql, con);
                     con.Open();
                     using (MySqlDataReader sqReader = getJammers.ExecuteReader())
@@ -2594,7 +2614,7 @@ class A1_System : TcpSession
 
                 case "m":
                     writer.WriteStartElement("gml");
-                    sql = "SELECT * FROM t_moods";
+                    sql = "SELECT * FROM t_mood";
                     MySqlCommand getMoods = new MySqlCommand(sql, con);
                     con.Open();
                     using (MySqlDataReader sqReader = getMoods.ExecuteReader())
@@ -2656,15 +2676,16 @@ class A1_System : TcpSession
         {
             writer.WriteStartElement("h10_0");
             
-            string sql = "SELECT * FROM user";
+            string sql = "SELECT * FROM user WHERE uID=@uid";
 
             writer.WriteStartElement("gutc");
 
             string count = "0";
             
-            MySqlCommand getCleanings = new MySqlCommand(sql, con);
+            MySqlCommand getTransactions = new MySqlCommand(sql, con);
+            getTransactions.Parameters.AddWithValue("@uid", a1_User.userID);
             con.Open();
-            using (MySqlDataReader sqReader = getCleanings.ExecuteReader())
+            using (MySqlDataReader sqReader = getTransactions.ExecuteReader())
             {
                 while (sqReader.Read())
                 {
@@ -2673,7 +2694,169 @@ class A1_System : TcpSession
                 con.Close();
             }
 
+            if(count == ""){
+                count = "0";
+            }
+
             writer.WriteAttributeString("c", count);
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+        return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+    }
+
+    public string BuyProduct(string id, string b, string productType)
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+
+        var con = new MySqlConnection(sqServer);
+
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h10_0");
+
+            string sql = "SELECT * FROM t_items WHERE id=@id";
+
+            string rid = "";
+            string cost = "";
+            string quantity = "";
+
+            switch(productType)
+            {
+                case "f":  
+                    writer.WriteStartElement("bf");
+                    sql = "SELECT * FROM t_familiar WHERE id=@id";
+                    break;
+
+                case "i":  
+                    writer.WriteStartElement("bi");
+                    sql = "SELECT * FROM t_items WHERE id=@id";
+                    break;
+
+                case "j":  
+                    writer.WriteStartElement("bj");
+                    sql = "SELECT * FROM t_jammer WHERE id=@id";
+                    break;
+                
+                case "c":  
+                    writer.WriteStartElement("bc");
+                    sql = "SELECT * FROM t_cleaning WHERE id=@id";
+                    break;
+
+                case "m":  
+                    writer.WriteStartElement("bm");
+                    sql = "SELECT * FROM t_mood WHERE id=@id";
+                    break;
+            }
+            MySqlCommand getProductInfo = new MySqlCommand(sql, con);
+            getProductInfo.Parameters.AddWithValue("@id", id);
+            con.Open();
+            using (MySqlDataReader sqReader = getProductInfo.ExecuteReader())
+            {
+                while (sqReader.Read())
+                {
+                    rid = sqReader["rid"].ToString();
+                    cost = sqReader["cost"].ToString();
+                    if(productType == "j")
+                    {
+                        quantity = sqReader["quantity"].ToString();
+                    }
+                }
+                con.Close();
+            }
+
+            var responseStreamEntry = new MemoryStream();
+
+            using (XmlWriter writer2 = XmlWriter.Create(responseStreamEntry, settings))
+            {
+                writer2.WriteStartElement("t");
+
+                writer2.WriteAttributeString("id", id);
+                writer2.WriteAttributeString("rid", rid);
+                writer2.WriteAttributeString("d", DateTime.Now.ToString("MM/dd/yyyy HH:mm"));
+                writer2.WriteAttributeString("c", cost);
+                writer2.WriteAttributeString("b", "2500");
+
+                writer2.WriteEndElement();
+                writer2.Flush();
+                writer2.Close();
+            }
+
+            string sql2 = "UPDATE user SET transactionHistory = IFNULL(CONCAT(transactionHistory, @transaction), @transaction) WHERE uID=@uID";
+            MySqlCommand updateTransactions = new MySqlCommand(sql2, con);
+            updateTransactions.Parameters.AddWithValue("@transaction", System.Text.ASCIIEncoding.ASCII.GetString(responseStreamEntry.ToArray()));
+            updateTransactions.Parameters.AddWithValue("@uID", a1_User.userID.ToString());
+            con.Open();
+            updateTransactions.ExecuteNonQuery();
+            con.Close();
+
+            string sql4 = "UPDATE user SET transactionCount = IFNULL(transactionCount,0) + 1 WHERE uID=@uID";
+            MySqlCommand updateCount = new MySqlCommand(sql4, con);
+            updateCount.Parameters.AddWithValue("@uID", a1_User.userID.ToString());
+            con.Open();
+            updateCount.ExecuteNonQuery();
+            con.Close();
+
+            if(productType == "j")
+            {
+                string sql3 = "UPDATE user SET jammersTotal = IFNULL(jammersTotal,0) + @quantity WHERE uID=@uID";
+                MySqlCommand updateJammers = new MySqlCommand(sql3, con);
+                updateJammers.Parameters.AddWithValue("@quantity", int.Parse(quantity));
+                updateJammers.Parameters.AddWithValue("@uID", a1_User.userID.ToString());
+                con.Open();
+                updateJammers.ExecuteNonQuery();
+                con.Close();
+            }
+
+            writer.WriteAttributeString("id", id);
+            writer.WriteAttributeString("b", "2500"); //Supposed to reflect remaining balance, but A1Emu uses infinite funds.
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+        return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+    }
+
+    string GetUserTransactions()
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+
+        var con = new MySqlConnection(sqServer);
+
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h10_0");
+            writer.WriteStartElement("gut");
+
+            string transactionHistory = "";
+
+            string sql = "SELECT * FROM user WHERE uID=@id";
+            MySqlCommand getProductInfo = new MySqlCommand(sql, con);
+            getProductInfo.Parameters.AddWithValue("@id", a1_User.userID.ToString());
+            con.Open();
+            using (MySqlDataReader sqReader = getProductInfo.ExecuteReader())
+            {
+                while (sqReader.Read())
+                {
+                    transactionHistory = sqReader["transactionHistory"].ToString();
+                }
+                con.Close();
+            }
+
+            writer.WriteRaw(transactionHistory);
 
             writer.WriteEndElement();
             writer.WriteEndElement();
