@@ -115,6 +115,11 @@ class A1_System : TcpSession
                     responses.Add(InviteBuddyResponse(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5], commandInfo[6]));
                     break;
 
+                // ---------------------------- Plugin 3 (Boxing) --------------------------- \\
+                case "pe":
+                    responses.Add(PlayerEvent(commandInfo[1], commandInfo[2], commandInfo[3]));
+                    break;
+
                 // ---------------------------- Plugin 5 (Soccer) --------------------------- \\
                 case "cm":
                     responses.Add(CharacterMove(commandInfo[1], commandInfo[2], commandInfo[3]));
@@ -1795,6 +1800,20 @@ class A1_System : TcpSession
 
             writer.WriteStartElement("h" + plugin + "_0");
 
+            if(plugin == "3")
+            {
+                writer.WriteStartElement("nr");
+                writer.WriteEndElement();
+
+                if(roundCount == 0)
+                {
+                    writer.WriteStartElement("sg");
+                    writer.WriteEndElement();              
+                }
+
+                roundCount += 1;
+            }
+
             if(plugin == "5")
             {   
                 if(roundCount < 10)
@@ -2050,6 +2069,62 @@ class A1_System : TcpSession
         a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
 
         return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+    }
+
+    // -------------------------------------------------------------------------- \\
+    //                              Plugin 3 - Boxing                             \\
+    // -------------------------------------------------------------------------- \\
+
+    string PlayerEvent(string h, string e, string bid)
+    {
+
+        //TODO - Figure out what h (damage) and e (event) needs to do to actually do something ingame.
+
+        var opponentStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+        using (XmlWriter writer = XmlWriter.Create(opponentStream, settings))
+        {
+            writer.WriteStartElement("h3_0");
+
+            writer.WriteStartElement("oe");
+
+            writer.WriteAttributeString("h", h);
+
+            writer.WriteAttributeString("e", e);
+
+            writer.WriteAttributeString("bid", bid);
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        var playerStream = new MemoryStream();
+        using (XmlWriter writer = XmlWriter.Create(playerStream, settings))
+        {
+            writer.WriteStartElement("h3_0");
+
+            writer.WriteStartElement("pe");
+
+            writer.WriteAttributeString("h", h);
+
+            writer.WriteAttributeString("e", e);
+
+            writer.WriteAttributeString("bid", bid);
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(opponentStream.ToArray()));
+
+        return System.Text.ASCIIEncoding.ASCII.GetString(playerStream.ToArray());
     }
 
     // -------------------------------------------------------------------------- \\

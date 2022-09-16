@@ -229,13 +229,16 @@ class Program
         Console.WriteLine("[A1Emu] Performing SQL cleanup...");
 
         string sqlResetOnineStatus = "UPDATE user SET isOnline = 0;";
+        string sqlTruncateMP3 = "TRUNCATE TABLE mp_3;";
         string sqlTruncateMP5 = "TRUNCATE TABLE mp_5;";
 
         MySqlCommand resetOnlineStatus = new MySqlCommand(sqlResetOnineStatus, con);
+        MySqlCommand truncateMP3 = new MySqlCommand(sqlTruncateMP3, con);
         MySqlCommand truncateMP5 = new MySqlCommand(sqlTruncateMP5, con);
         
         con.Open();
         resetOnlineStatus.ExecuteNonQuery();
+        truncateMP3.ExecuteNonQuery();
         truncateMP5.ExecuteNonQuery();
         con.Close();
 
