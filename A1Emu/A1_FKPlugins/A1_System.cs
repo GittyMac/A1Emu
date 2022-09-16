@@ -202,6 +202,10 @@ class A1_System : TcpSession
                     responses.Add(GetUserTransactions());
                     break;
 
+                case "asp":
+                    responses.Add(AssetSendParameter(commandInfo[1], commandInfo[2]));
+                    break;
+
                 // ----------------------- Multiplayer (Shared by all) ---------------------- \\
                 case "lv":
                     responses.Add(LeaveGame(commandInfo[1], routingString[1]));
@@ -2470,42 +2474,78 @@ class A1_System : TcpSession
         settings.ConformanceLevel = ConformanceLevel.Fragment;
         settings.Encoding = Encoding.ASCII;
 
+        var con = new MySqlConnection(sqServer);
+
         using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
         {
             writer.WriteStartElement("h10_0");
 
             writer.WriteStartElement("gua");
 
-            // XmlDocument profile = new XmlDocument();
+            XmlDocument profile = new XmlDocument();
+            profile.Load(serverDirectory + a1_User.username + @"/profile");
 
-            // var familiarNodes = profile.SelectNodes("/profile/trunk/familiars/familiar");
-            // foreach (XmlNode node in familiarNodes)
-            // {
-            //     writer.WriteStartElement("f");
-            //     writer.WriteAttributeString("id", node.Attributes["id"].Value);
-            //     writer.WriteAttributeString("p", node.Attributes["start"].Value);
-            //     writer.WriteAttributeString("c", node.Attributes["time"].Value);
+            var familiarNodes = profile.SelectNodes("/profile/trunk/familiars/familiar");
+            foreach (XmlNode node in familiarNodes)
+            {
+                writer.WriteStartElement("f");
+                writer.WriteAttributeString("id", node.Attributes["id"].Value);
+                writer.WriteAttributeString("p", node.Attributes["start"].Value);
+                writer.WriteAttributeString("c", (int.Parse(node.Attributes["time"].Value) / 60).ToString());
+                writer.WriteEndElement();
+            }
 
-            //     writer.WriteEndElement();
-            // }
+            string sql = "SELECT * FROM user WHERE uID=@uid";
 
-            // var jammerNodes = profile.SelectNodes("/profile/trunk/jammers/jammer");
-            // foreach (XmlNode node in familiarNodes)
-            // {
-            //     writer.WriteStartElement("f");
-            //     writer.WriteAttributeString("id", node.Attributes["id"].Value);
-            //     writer.WriteAttributeString("p", node.Attributes["start"].Value);
-            //     writer.WriteAttributeString("c", node.Attributes["time"].Value);
+            string jammersTotal = "";
+            string jammersUsed = "";
+            
+            MySqlCommand getJammerInfo = new MySqlCommand(sql, con);
+            getJammerInfo.Parameters.AddWithValue("@uid", a1_User.userID);
+            con.Open();
+            using (MySqlDataReader sqReader = getJammerInfo.ExecuteReader())
+            {
+                while (sqReader.Read())
+                {
+                    jammersTotal = sqReader["jammersTotal"].ToString();
+                    jammersUsed = sqReader["jammersUsed"].ToString();
+                }
+                con.Close();
+            }
 
-            //     writer.WriteEndElement();
-            // }
+            if(jammersTotal == "")
+            {
+                jammersTotal = "0";
+            }
 
+            if(jammersUsed == "")
+            {
+                jammersUsed = "0";
+            }
+
+            if(int.Parse(jammersTotal) > 0)
+            {
+                writer.WriteStartElement("j");
+                writer.WriteAttributeString("id", "80014a");
+                writer.WriteAttributeString("p", jammersUsed);
+                writer.WriteAttributeString("c", jammersTotal);
+                writer.WriteEndElement();   
+            }
+
+            var moodNodes = profile.SelectNodes("/profile/trunk/moods/mood");
+            foreach (XmlNode node in moodNodes)
+            {
+                writer.WriteStartElement("m");
+                writer.WriteAttributeString("id", node.Attributes["id"].Value);
+                writer.WriteEndElement();
+            }
+            
             writer.WriteEndElement();
             writer.WriteEndElement();
             writer.Flush();
             writer.Close();
         }
-        return "<gua />";
+        return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
     }
 
     public string GetLootBalance()
@@ -2857,6 +2897,39 @@ class A1_System : TcpSession
             }
 
             writer.WriteRaw(transactionHistory);
+
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+        return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
+    }
+
+    string AssetSendParameter(string p, string id)
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+
+        var con = new MySqlConnection(sqServer);
+
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h10_0");
+            writer.WriteStartElement("asp");
+
+            if(id == "80014a")
+            {
+                string sql3 = "UPDATE user SET jammersUsed = IFNULL(jammersUsed,0) + 1 WHERE uID=@uID";
+                MySqlCommand updateJammers = new MySqlCommand(sql3, con);
+                updateJammers.Parameters.AddWithValue("@uID", a1_User.userID.ToString());
+                con.Open();
+                updateJammers.ExecuteNonQuery();
+                con.Close();
+            }
 
             writer.WriteEndElement();
             writer.WriteEndElement();
