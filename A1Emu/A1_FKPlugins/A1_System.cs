@@ -1811,6 +1811,16 @@ class A1_System : TcpSession
                     writer.WriteEndElement();              
                 }
 
+                //Seems that the game uses parameters to set timers, most likely for ping/lag.
+                //They're stored in Number classes, so they must be fairly long ints, maybe in millis?
+                //TODO - Find out the proper values/offsets for these. 
+                writer.WriteStartElement("pr");
+                writer.WriteAttributeString("k", "1");
+                writer.WriteAttributeString("d", "1");
+                writer.WriteAttributeString("z", "1");
+                writer.WriteEndElement();        
+
+
                 roundCount += 1;
             }
 
@@ -2077,9 +2087,6 @@ class A1_System : TcpSession
 
     string PlayerEvent(string h, string e, string bid)
     {
-
-        //TODO - Figure out what h (damage) and e (event) needs to do to actually do something ingame.
-
         var opponentStream = new MemoryStream();
         XmlWriterSettings settings = new XmlWriterSettings();
         settings.OmitXmlDeclaration = true;
@@ -2103,28 +2110,30 @@ class A1_System : TcpSession
             writer.Close();
         }
 
-        var playerStream = new MemoryStream();
-        using (XmlWriter writer = XmlWriter.Create(playerStream, settings))
-        {
-            writer.WriteStartElement("h3_0");
-
-            writer.WriteStartElement("pe");
-
-            writer.WriteAttributeString("h", h);
-
-            writer.WriteAttributeString("e", e);
-
-            writer.WriteAttributeString("bid", bid);
-
-            writer.WriteEndElement();
-            writer.WriteEndElement();
-            writer.Flush();
-            writer.Close();
-        }
-
         a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(opponentStream.ToArray()));
 
-        return System.Text.ASCIIEncoding.ASCII.GetString(playerStream.ToArray());
+        if(int.Parse(h) == 0)
+        {
+            var playerStream = new MemoryStream();
+            using (XmlWriter writer = XmlWriter.Create(playerStream, settings))
+            {
+                writer.WriteStartElement("h3_0");
+
+                writer.WriteStartElement("pe");
+
+                writer.WriteAttributeString("h", h);
+
+                writer.WriteAttributeString("e", e);
+
+                writer.WriteAttributeString("bid", bid);
+
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+                writer.Flush();
+                writer.Close();
+            }
+            return System.Text.ASCIIEncoding.ASCII.GetString(playerStream.ToArray());
+        }else {return "none"; }
     }
 
     // -------------------------------------------------------------------------- \\
