@@ -1802,8 +1802,14 @@ class A1_System : TcpSession
 
             if(plugin == "3")
             {
+                //TODO - Add DB mp_3 columns for these attributes in addition to the score.
                 writer.WriteStartElement("nr");
+                writer.WriteAttributeString("ph", "200");
+                writer.WriteAttributeString("oh", "200");
+                writer.WriteAttributeString("pl", "3");
+                writer.WriteAttributeString("ol", "3");
                 writer.WriteEndElement();
+                
 
                 if(roundCount == 0)
                 {
@@ -1815,9 +1821,9 @@ class A1_System : TcpSession
                 //They're stored in Number classes, so they must be fairly long ints, maybe in millis?
                 //TODO - Find out the proper values/offsets for these. 
                 writer.WriteStartElement("pr");
-                writer.WriteAttributeString("k", "1");
-                writer.WriteAttributeString("d", "1");
-                writer.WriteAttributeString("z", "1");
+                writer.WriteAttributeString("k", "1000");
+                writer.WriteAttributeString("d", "1000");
+                writer.WriteAttributeString("z", "1000");
                 writer.WriteEndElement();        
 
 
@@ -2112,28 +2118,25 @@ class A1_System : TcpSession
 
         a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(opponentStream.ToArray()));
 
-        if(int.Parse(h) == 0)
+        var playerStream = new MemoryStream();
+        using (XmlWriter writer = XmlWriter.Create(playerStream, settings))
         {
-            var playerStream = new MemoryStream();
-            using (XmlWriter writer = XmlWriter.Create(playerStream, settings))
-            {
-                writer.WriteStartElement("h3_0");
+            writer.WriteStartElement("h3_0");
 
-                writer.WriteStartElement("pe");
+            writer.WriteStartElement("pe");
 
-                writer.WriteAttributeString("h", h);
+            writer.WriteAttributeString("h", h);
 
-                writer.WriteAttributeString("e", e);
+            writer.WriteAttributeString("e", e);
 
-                writer.WriteAttributeString("bid", bid);
+            writer.WriteAttributeString("bid", bid);
 
-                writer.WriteEndElement();
-                writer.WriteEndElement();
-                writer.Flush();
-                writer.Close();
-            }
-            return System.Text.ASCIIEncoding.ASCII.GetString(playerStream.ToArray());
-        }else {return "none"; }
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+        return System.Text.ASCIIEncoding.ASCII.GetString(playerStream.ToArray());
     }
 
     // -------------------------------------------------------------------------- \\
