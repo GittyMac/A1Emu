@@ -34,8 +34,9 @@ class A1_System : TcpSession
 
     string opponentConID = "";
     int opponentUID = 0;
-    int teamSide = 5;
-    int roundCount = 0;
+
+    FKGamePlayer mpPlayer;
+    FKGamePlayer mpRival;
 
     public A1_System(TcpServer server, int port, string sqServerInput, string directory) : base(server)
     {
@@ -1498,7 +1499,9 @@ class A1_System : TcpSession
 
         int challenge = 0;
         int challenger = 0;
-        teamSide = 5;
+
+        mpPlayer = new FKGamePlayer();
+        mpRival = new FKGamePlayer();
 
         var con = new MySqlConnection(sqServer);
         string sql = "SELECT * FROM mp_" + plugin + " WHERE userID=@userID";
@@ -1796,13 +1799,16 @@ class A1_System : TcpSession
         settings.Encoding = Encoding.ASCII;
         using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
         {
-            bool isStartingGame = teamSide == 5;
-
             writer.WriteStartElement("h" + plugin + "_0");
 
             if(plugin == "3")
             {
                 //TODO - Add DB mp_3 columns for these attributes in addition to the score.
+                mpPlayer.health = 200;
+                mpPlayer.lives = 3;
+                mpRival.health = 200;
+                mpRival.lives = 3;
+
                 writer.WriteStartElement("nr");
                 writer.WriteAttributeString("ph", "200");
                 writer.WriteAttributeString("oh", "200");
@@ -1811,7 +1817,7 @@ class A1_System : TcpSession
                 writer.WriteEndElement();
                 
 
-                if(roundCount == 0)
+                if(mpPlayer.round == 0)
                 {
                     writer.WriteStartElement("sg");
                     writer.WriteEndElement();              
@@ -1827,37 +1833,37 @@ class A1_System : TcpSession
                 writer.WriteEndElement();        
 
 
-                roundCount += 1;
+                mpPlayer.round += 1;
             }
 
             if(plugin == "5")
             {   
-                if(roundCount < 10)
+                if(mpPlayer.round < 10)
                 {
-                    if(roundCount == 0 || roundCount == 4)
+                    if(mpPlayer.round == 0 || mpPlayer.round == 4)
                     { 
                         writer.WriteStartElement("cc");
-                        if(teamSide == 5)
+                        if(mpPlayer.round == 0)
                         {
                             /* Initally assigning teams based on the userID of the players as it is
                             an easy and predictable way to assign the teams for both sides. */
                             if(a1_User.userID < opponentUID)
                             {
-                                teamSide = 1;
+                                mpPlayer.isKicker = true;
                                 writer.WriteAttributeString("c", "1");
                             }else
                             {
-                                teamSide = 0;
+                                mpPlayer.isKicker = false;
                                 writer.WriteAttributeString("c", "0");
                             }
                         }else{
                             //Swaps teams for second round.
-                            switch(teamSide)
+                            switch(mpPlayer.isKicker)
                             {
-                                case 0:
+                                case false:
                                     writer.WriteAttributeString("c", "1");
                                     break;
-                                case 1:
+                                case true:
                                     writer.WriteAttributeString("c", "0");
                                     break;
                             }
@@ -1868,18 +1874,15 @@ class A1_System : TcpSession
                     writer.WriteStartElement("nr");
                     writer.WriteEndElement();
 
-                    if(roundCount == 0)
+                    if(mpPlayer.round == 0)
                     {
                         writer.WriteStartElement("sg");
                         writer.WriteEndElement();              
                     }
 
-                    roundCount += 1;
+                    mpPlayer.round += 1;
                 }else
                 {
-                    int playerScore = 0;
-                    int opponentScore = 0;
-
                     //Get the player's score.
                     string sql3 = "SELECT score FROM mp_5 WHERE userID=@userID";
                     MySqlCommand getPlayerScore = new MySqlCommand(sql3, con);
@@ -1893,24 +1896,24 @@ class A1_System : TcpSession
                     {
                         while (sqReader.Read())
                         {
-                            playerScore = int.Parse(sqReader["score"].ToString());
+                            mpPlayer.score = int.Parse(sqReader["score"].ToString());
                         }
                     }
                     using (MySqlDataReader sqReader = getOpponentScore.ExecuteReader())
                     {
                         while (sqReader.Read())
                         {
-                            opponentScore = int.Parse(sqReader["score"].ToString());
+                            mpRival.score = int.Parse(sqReader["score"].ToString());
                         }
                     }
                     con.Close();
 
                     writer.WriteStartElement("go");
                     //The result attribute seems to determine the coin distribution.
-                    if(playerScore > opponentScore)
+                    if(mpPlayer.score > mpRival.score)
                     {
                         writer.WriteAttributeString("r", "6");
-                    }else if(playerScore < opponentScore)
+                    }else if(mpPlayer.score < mpRival.score)
                     {
                         writer.WriteAttributeString("r", "7");
                     }else
@@ -2016,8 +2019,8 @@ class A1_System : TcpSession
 
         opponentConID = "";
         opponentUID = 0;
-        teamSide = 5;
-        roundCount = 0;
+        mpPlayer = null;
+        mpRival = null;
 
         var con = new MySqlConnection(sqServer);
 
@@ -2093,6 +2096,8 @@ class A1_System : TcpSession
 
     string PlayerEvent(string h, string e, string bid)
     {
+        //TODO - Figure out how to get the game to trigger damages and proper health calculations.
+
         var opponentStream = new MemoryStream();
         XmlWriterSettings settings = new XmlWriterSettings();
         settings.OmitXmlDeclaration = true;
