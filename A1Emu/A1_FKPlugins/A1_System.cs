@@ -1791,7 +1791,6 @@ class A1_System : TcpSession
 
         //It seems that each game has it's own unique way of handling this.
 
-        // ---------------------------- Plugin 5 (Soccer) --------------------------- \\
         var responseStream = new MemoryStream();
         XmlWriterSettings settings = new XmlWriterSettings();
         settings.OmitXmlDeclaration = true;
@@ -1809,19 +1808,62 @@ class A1_System : TcpSession
                 mpRival.health = 200;
                 mpRival.lives = 3;
 
+                if(mpPlayer.round == 0)
+                {
+                    string sql5 = "UPDATE mp_3 SET lives = @l, score = 0 WHERE userID=@userID";
+                    MySqlCommand setRivalLives = new MySqlCommand(sql5, con);
+                    setRivalLives.Parameters.AddWithValue("@l", 3);
+                    setRivalLives.Parameters.AddWithValue("@userID", opponentUID);
+
+                    MySqlCommand setPlayerLives = new MySqlCommand(sql5, con);
+                    setPlayerLives.Parameters.AddWithValue("@l", 3);
+                    setPlayerLives.Parameters.AddWithValue("@userID", opponentUID);
+
+                    con.Open();
+                    setPlayerLives.ExecuteNonQuery();
+                    setRivalLives.ExecuteNonQuery();
+                    con.Close();    
+                }else
+                {
+                    string sql6 = "SELECT lives FROM mp_3 WHERE userID=@userID";
+                    MySqlCommand getPlayerLives = new MySqlCommand(sql6, con);
+                    getPlayerLives.Parameters.AddWithValue("@userID", a1_User.userID);
+
+                    MySqlCommand getOpponentLives = new MySqlCommand(sql6, con);
+                    getOpponentLives.Parameters.AddWithValue("@userID", opponentUID);
+
+                    con.Open();
+                    using (MySqlDataReader sqReader = getPlayerLives.ExecuteReader())
+                    {
+                        while (sqReader.Read())
+                        {
+                            mpPlayer.lives = int.Parse(sqReader["lives"].ToString());
+                        }
+                    }
+                    using (MySqlDataReader sqReader = getOpponentLives.ExecuteReader())
+                    {
+                        while (sqReader.Read())
+                        {
+                            mpRival.lives = int.Parse(sqReader["lives"].ToString());
+                        }
+                    }
+                    con.Close();
+                }
+
                 writer.WriteStartElement("nr");
                 writer.WriteAttributeString("ph", "200");
                 writer.WriteAttributeString("oh", "200");
-                writer.WriteAttributeString("pl", "3");
-                writer.WriteAttributeString("ol", "3");
+                writer.WriteAttributeString("pl", mpPlayer.lives.ToString());
+                writer.WriteAttributeString("ol", mpRival.lives.ToString());
                 writer.WriteEndElement();
-                
 
-                if(mpPlayer.round == 0)
-                {
-                    writer.WriteStartElement("sg");
-                    writer.WriteEndElement();              
-                }
+                string sql4 = "UPDATE mp_3 SET health = @h WHERE userID=@userID";
+                MySqlCommand setPlayerHealth = new MySqlCommand(sql4, con);
+                setPlayerHealth.Parameters.AddWithValue("@h", 200);
+                setPlayerHealth.Parameters.AddWithValue("@userID", a1_User.userID);
+                con.Open();
+                setPlayerHealth.ExecuteNonQuery();
+                con.Close();
 
                 //Seems that the game uses parameters to set timers, most likely for ping/lag.
                 //They're stored in Number classes, so they must be fairly long ints, maybe in millis?
@@ -1830,8 +1872,13 @@ class A1_System : TcpSession
                 writer.WriteAttributeString("k", "1000");
                 writer.WriteAttributeString("d", "1000");
                 writer.WriteAttributeString("z", "1000");
-                writer.WriteEndElement();        
+                writer.WriteEndElement();   
 
+                if(mpPlayer.round == 0)
+                {
+                    writer.WriteStartElement("sg");
+                    writer.WriteEndElement();          
+                }     
 
                 mpPlayer.round += 1;
             }
@@ -2098,6 +2145,50 @@ class A1_System : TcpSession
     {
         //TODO - Figure out how to get the game to trigger damages and proper health calculations.
 
+        var con = new MySqlConnection(sqServer);
+
+        //Get the player's health.
+        string sql2 = "SELECT health FROM mp_3 WHERE userID=@userID";
+        MySqlCommand getPlayerHealth = new MySqlCommand(sql2, con);
+        getPlayerHealth.Parameters.AddWithValue("@userID", a1_User.userID);
+
+        string sql3 = "SELECT health FROM mp_3 WHERE userID=@userID";
+        MySqlCommand getOpponentHealth = new MySqlCommand(sql3, con);
+        getOpponentHealth.Parameters.AddWithValue("@userID", opponentUID);
+
+        con.Open();
+        using (MySqlDataReader sqReader = getPlayerHealth.ExecuteReader())
+        {
+            while (sqReader.Read())
+            {
+                mpPlayer.health = int.Parse(sqReader["health"].ToString());
+            }
+        }
+        using (MySqlDataReader sqReader = getOpponentHealth.ExecuteReader())
+        {
+            while (sqReader.Read())
+            {
+                mpRival.health = int.Parse(sqReader["health"].ToString());
+                mpRival.health -= int.Parse(h);
+            }
+        }
+
+        mpPlayer.score += int.Parse(h);
+
+        string sql = "UPDATE mp_3 SET health = @h WHERE userID=@userID";
+        MySqlCommand setPlayerHealth = new MySqlCommand(sql, con);
+        setPlayerHealth.Parameters.AddWithValue("@h", mpRival.health);
+        setPlayerHealth.Parameters.AddWithValue("@userID", opponentUID);
+        setPlayerHealth.ExecuteNonQuery();
+
+        string sql5 = "UPDATE mp_3 SET score = @s WHERE userID=@userID";
+        MySqlCommand setPlayerScore = new MySqlCommand(sql5, con);
+        setPlayerScore.Parameters.AddWithValue("@s", mpPlayer.score);
+        setPlayerScore.Parameters.AddWithValue("@userID", a1_User.userID);
+        setPlayerScore.ExecuteNonQuery();
+
+        con.Close();
+
         var opponentStream = new MemoryStream();
         XmlWriterSettings settings = new XmlWriterSettings();
         settings.OmitXmlDeclaration = true;
@@ -2109,13 +2200,76 @@ class A1_System : TcpSession
 
             writer.WriteStartElement("oe");
 
-            writer.WriteAttributeString("h", h);
+            writer.WriteAttributeString("h", mpRival.health.ToString());
 
             writer.WriteAttributeString("e", e);
 
             writer.WriteAttributeString("bid", bid);
-
+            
             writer.WriteEndElement();
+
+            if(mpRival.health <= 0)
+            {
+                writer.WriteStartElement("pe");
+
+                writer.WriteAttributeString("e", "10");
+
+                writer.WriteAttributeString("bid", bid);
+                
+                mpRival.lives -= 1;
+
+                string sql4 = "UPDATE mp_3 SET lives = @l WHERE userID=@userID";
+                MySqlCommand setRivalLives = new MySqlCommand(sql4, con);
+                setRivalLives.Parameters.AddWithValue("@l", mpRival.lives);
+                setRivalLives.Parameters.AddWithValue("@userID", opponentUID);
+                con.Open();
+                setRivalLives.ExecuteNonQuery();
+                con.Close();
+
+                writer.WriteEndElement();
+
+                if(mpRival.lives <= 0)
+                {
+                    string sql6 = "SELECT score FROM mp_3 WHERE userID=@userID";
+                    MySqlCommand getPlayerScore = new MySqlCommand(sql6, con);
+                    getPlayerScore.Parameters.AddWithValue("@userID", a1_User.userID);
+
+                    MySqlCommand getOpponentScore = new MySqlCommand(sql6, con);
+                    getOpponentScore.Parameters.AddWithValue("@userID", opponentUID);
+
+                    con.Open();
+                    using (MySqlDataReader sqReader = getPlayerScore.ExecuteReader())
+                    {
+                        while (sqReader.Read())
+                        {
+                            mpPlayer.score = int.Parse(sqReader["score"].ToString());
+                        }
+                    }
+                    using (MySqlDataReader sqReader = getOpponentScore.ExecuteReader())
+                    {
+                        while (sqReader.Read())
+                        {
+                            mpRival.score = int.Parse(sqReader["score"].ToString());
+                        }
+                    }
+
+                    writer.WriteStartElement("go");
+                    //The result attribute seems to determine the coin distribution.
+                    if(mpPlayer.score < mpRival.score)
+                    {
+                        writer.WriteAttributeString("r", "6");
+                    }else if(mpPlayer.score > mpRival.score)
+                    {
+                        writer.WriteAttributeString("r", "7");
+                    }else
+                    {
+                       writer.WriteAttributeString("r", "8"); 
+                    }
+                
+                    writer.WriteEndElement(); 
+                }
+            }
+
             writer.WriteEndElement();
             writer.Flush();
             writer.Close();
@@ -2123,25 +2277,50 @@ class A1_System : TcpSession
 
         a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(opponentStream.ToArray()));
 
-        var playerStream = new MemoryStream();
-        using (XmlWriter writer = XmlWriter.Create(playerStream, settings))
+        if(mpRival.health <= 0)
         {
-            writer.WriteStartElement("h3_0");
+            var playerStream = new MemoryStream();
+            using (XmlWriter writer = XmlWriter.Create(playerStream, settings))
+            {
+                writer.WriteStartElement("h3_0");
 
-            writer.WriteStartElement("pe");
+                writer.WriteStartElement("oe");
 
-            writer.WriteAttributeString("h", h);
+                writer.WriteAttributeString("h", mpRival.health.ToString());
 
-            writer.WriteAttributeString("e", e);
+                writer.WriteAttributeString("e", "10");
 
-            writer.WriteAttributeString("bid", bid);
+                writer.WriteAttributeString("bid", bid);
 
-            writer.WriteEndElement();
-            writer.WriteEndElement();
-            writer.Flush();
-            writer.Close();
+                writer.WriteEndElement();
+
+                if(mpRival.lives <= 0)
+                {
+                    writer.WriteStartElement("go");
+                    //The result attribute seems to determine the coin distribution.
+                    if(mpPlayer.score > mpRival.score)
+                    {
+                        writer.WriteAttributeString("r", "6");
+                    }else if(mpPlayer.score < mpRival.score)
+                    {
+                        writer.WriteAttributeString("r", "7");
+                    }else
+                    {
+                       writer.WriteAttributeString("r", "8"); 
+                    }
+                
+                    writer.WriteEndElement(); 
+                }
+
+                writer.WriteEndElement();
+                writer.Flush();
+                writer.Close();
+            }
+            return System.Text.ASCIIEncoding.ASCII.GetString(playerStream.ToArray());
+        }else
+        {
+            return "<notneeded/>";
         }
-        return System.Text.ASCIIEncoding.ASCII.GetString(playerStream.ToArray());
     }
 
     // -------------------------------------------------------------------------- \\
