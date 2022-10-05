@@ -2253,6 +2253,14 @@ class A1_System : TcpSession
                         }
                     }
 
+                    writer.WriteStartElement("ps");
+                    writer.WriteAttributeString("s", mpRival.score.ToString());
+                    writer.WriteEndElement();
+
+                    writer.WriteStartElement("os");
+                    writer.WriteAttributeString("s", mpPlayer.score.ToString());
+                    writer.WriteEndElement();
+
                     writer.WriteStartElement("go");
                     //The result attribute seems to determine the coin distribution.
                     if(mpPlayer.score < mpRival.score)
@@ -2296,6 +2304,14 @@ class A1_System : TcpSession
 
                 if(mpRival.lives <= 0)
                 {
+                    writer.WriteStartElement("ps");
+                    writer.WriteAttributeString("s", mpPlayer.score.ToString());
+                    writer.WriteEndElement();
+
+                    writer.WriteStartElement("os");
+                    writer.WriteAttributeString("s", mpRival.score.ToString());
+                    writer.WriteEndElement();
+
                     writer.WriteStartElement("go");
                     //The result attribute seems to determine the coin distribution.
                     if(mpPlayer.score > mpRival.score)
