@@ -1877,7 +1877,17 @@ class A1_System : TcpSession
                 if(mpPlayer.round == 0)
                 {
                     writer.WriteStartElement("sg");
-                    writer.WriteEndElement();          
+                    writer.WriteEndElement();    
+
+                    writer.WriteStartElement("pe");
+                    writer.WriteAttributeString("e", "0");
+                    writer.WriteAttributeString("bid", bid);   
+                    writer.WriteEndElement();
+
+                    writer.WriteStartElement("oe");
+                    writer.WriteAttributeString("e", "0");
+                    writer.WriteAttributeString("bid", bid);   
+                    writer.WriteEndElement();
                 }     
 
                 mpPlayer.round += 1;
@@ -2252,6 +2262,9 @@ class A1_System : TcpSession
                             mpRival.score = int.Parse(sqReader["score"].ToString());
                         }
                     }
+
+                    mpPlayer.score *= 2;
+                    mpRival.score *= 2;
 
                     writer.WriteStartElement("ps");
                     writer.WriteAttributeString("s", mpRival.score.ToString());
