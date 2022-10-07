@@ -1893,6 +1893,39 @@ class A1_System : TcpSession
                 mpPlayer.round += 1;
             }
 
+            if(plugin == "4")
+            {
+                writer.WriteStartElement("nr");
+                writer.WriteEndElement();
+
+                if(mpPlayer.round == 0)
+                {
+                    writer.WriteStartElement("sg");
+                    writer.WriteEndElement();    
+                    /* Initally assigning teams based on the userID of the players as it is
+                    an easy and predictable way to assign the teams for both sides. */
+                    if(a1_User.userID < opponentUID)
+                    {
+                        mpPlayer.isKicker = true;
+                        writer.WriteStartElement("pt");
+                        writer.WriteAttributeString("t", "60000");
+                        writer.WriteEndElement();    
+                    }else
+                    {
+                        mpPlayer.isKicker = false;
+                        writer.WriteStartElement("ot");
+                        writer.WriteAttributeString("t", "60000");
+                        writer.WriteEndElement();    
+                    }
+                }     
+
+                writer.WriteStartElement("ts");
+                writer.WriteEndElement();    
+                
+
+                mpPlayer.round += 1;
+            }
+
             if(plugin == "5")
             {   
                 if(mpPlayer.round < 10)
