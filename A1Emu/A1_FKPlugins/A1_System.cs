@@ -1551,7 +1551,7 @@ class A1_System : TcpSession
             int i = 0;
             while(i < 30)
             {
-                string findOpenPlayerCommand = "SELECT * FROM mp_5 WHERE userID!=@userID AND challenge=0";
+                string findOpenPlayerCommand = "SELECT * FROM mp_" + plugin + " WHERE userID!=@userID AND challenge=0";
                 MySqlCommand findOpenPlayer = new MySqlCommand(findOpenPlayerCommand, con);
                 findOpenPlayer.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
                 con.Open();
@@ -1569,7 +1569,7 @@ class A1_System : TcpSession
                     con.Close();
                 }
 
-                string findFoundPlayersCommand = "SELECT * FROM mp_5 WHERE userID=@userID";
+                string findFoundPlayersCommand = "SELECT * FROM mp_" + plugin + " WHERE userID=@userID";
                 MySqlCommand findFoundPlayers = new MySqlCommand(findFoundPlayersCommand, con);
                 findFoundPlayers.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
                 con.Open();
@@ -1592,7 +1592,7 @@ class A1_System : TcpSession
 
             //If player found an opponent.
             if(opponentConID != ""){
-                string setChallengeStatusCommand = "UPDATE mp_5 SET challenge = 1, challenger = @challenger WHERE userID=@userID";
+                string setChallengeStatusCommand = "UPDATE mp_" + plugin + " SET challenge = 1, challenger = @challenger WHERE userID=@userID";
                 MySqlCommand setChallengeStatusForPlayer = new MySqlCommand(setChallengeStatusCommand, con);
                 setChallengeStatusForPlayer.Parameters.AddWithValue("@userID", a1_User.userID);
                 setChallengeStatusForPlayer.Parameters.AddWithValue("@challenger", opponentUID);
@@ -1641,7 +1641,7 @@ class A1_System : TcpSession
                 return System.Text.ASCIIEncoding.ASCII.GetString(responseStream2.ToArray());
             }else if(isPlayerFound == 1) //If found by another player.
             {
-                string getChallengerIDCommand = "SELECT * FROM mp_5 WHERE userID=@userID";
+                string getChallengerIDCommand = "SELECT * FROM mp_" + plugin + " WHERE userID=@userID";
                 MySqlCommand getChallengerID = new MySqlCommand(getChallengerIDCommand, con);
                 getChallengerID.Parameters.AddWithValue("@userID", a1_User.userID.ToString());
                 con.Open();
@@ -1898,6 +1898,7 @@ class A1_System : TcpSession
                 writer.WriteStartElement("nr");
                 writer.WriteEndElement();
 
+                //look into bID?
                 if(mpPlayer.round == 0)
                 {
                     writer.WriteStartElement("sg");
