@@ -1906,7 +1906,19 @@ class A1_System : TcpSession
 
             if(plugin == "4")
             {
-                //Find out why the table isn't being placed by the client.
+                //TODO - Find out why the table isn't being placed by the client.
+
+                //Player Info
+                writer.WriteStartElement("pi");
+                writer.WriteAttributeString("s", "0");
+                writer.WriteAttributeString("l", "3");
+                writer.WriteEndElement();   
+
+                //Opponent Info
+                writer.WriteStartElement("oi");
+                writer.WriteAttributeString("s", "0");
+                writer.WriteAttributeString("l", "3");
+                writer.WriteEndElement();  
 
                 //The array of tables the game uses.  
                 string[] tables = new string[] {"NDABFNDBOANEACDNEBOAMCAFDMCBEBMDAFDMDBFDMDCBFMEABEMEBBCMECECMFADGMFBDGLBADGLBBDHLCAGBLCBBGLCCGCLFABFLFBMALFCCFLGAIALGBBDKAACCKABJAKACNAKBADBKBBCDKBCDFKGAIAKGBDFKGCDJKHACIKHBECJAAGDJABLAJACBIJDAEDJDBGEJDCECJDDBCJEALAJEBHEJECBHJEDFDJHAFCJHBCEJHCFBIAAEBIABNAIACLAIADEBIBADCIBBEEIBCCBIDADBIDBDGIDCBGIEADEIEBEDIECDFIGACGIGBDBIGCDHIHADDIHBEBIHCBCIHDIAHAACDHABBIHACEDHBACGHBBCBHBCEDHBDEEHCAIAHCBBIHCCBHHDABBHDBDCHDCDCHDDCJHEADIHEBCEHECCJHEDCFHFACEHFBHDHFCEEHGAKAHGBJAHGCFCHGDKAHHABDHHBCHHHCBHGAACCGABDIGACBCGADDDGBAECGBBBEGBCCHGDACGGDBFBGDCCIGEACHGEBKAGECCCGGADDGGBDDGGCBBGHAFCGHBBEGHCCBGHDDEFAACEFABCGFACDHFDAJAFDBBJFDCLAFDDMAFEADJFEBBGFECHCFEDDFFHACIFHBDJFHCDJEAADCEABFCEACCJEBABJEBBDHEBCFBEGACHEGBBBEGCCFEHAEEEHBDBDBACJDBBCIDCACBDCBDEDCCKADFABHDFBDIDFCBEDGABFDGBFBCCABJCCBBDCDABJCDBHBCDCBICEAJACEBDICECBBCFACFCFBBDBDADEBDBCCBEACDBEBBG",
@@ -1917,44 +1929,39 @@ class A1_System : TcpSession
                                                 "LBABDLBBDDLBCHCLBDCFLCABDLCBBGLCCDJLDABFLDBEELDCOAKAAKAKABCGKACIAKBACHKBBDDKBCCBKBDGBKCADJKCBHDKCCCBKCDCCKDACDKDBBJKDCBBKDDCFKEABJKEBGDKECECJAADFJABEDJACDHJBABEJBBKAJBCCEJBDCEJCABBJCBLAJCCDBJCDCEJDACCJDBFBJDCDDJDDDCJEAKAJEBBEJECCIJEDBFJFANAJFBBFJFCEBIBACGIBBEEIBCDJICABBICBDCICCDHICDJAIDADEIDBBCIDCBCIDDBBIEACBIEBFDIECDCIEDDJIFAFBIFBFBIFCIAIFDCHIGACGIGBCIIGCBHHCAFCHCBBCHCCLAHDACJHDBDIHDCGEHDDCJHEAECHEBFBHECOAHEDFDHFAEDHFBDHHFCJAHFDMAHGADBHGBEEHGCFCHGDBIHHACDHHBCFHHCBHGBABHGBBBGGBCCBGCAFCGCBFCGCCDIGCDDIGDADEGDBLAGDCDBGDDCFGEADFGEBBJGECDFGEDDGGFACHGFBJAGFCDGGFDBHGGAKAGGBHBGGCIAFAABIFABHEFACBFFBABEFBBDDFBCDFFBDMAFCACJFCBCDFCCDBFCDDEFDAEBFDBDGFDCDEFDDDIFEACGFEBEDFECEBFEDBCFFADHFFBBEFFCEEEAACDEABBGEACEDEBABIEBBEBEBCCHEBDBDECABGECBCIECCFDECDECEDABDEDBCCEDCCEEDDFDEEADGEEBCCEECGCDBACJDBBBIDBCNADBDLADCAECDCBCIDCCDCDDABJDDBJADDCIA",
                                                 "NCAEDNEADJMBADGMBBBGMBCBEMBDCDMFAFCMFBJAMFCCEMFDECLAAGDLABDFLBAGCLBBJALBCIALCALALCBDCLCCDDLCDCJLDACILDBKALDCCBLEACJLEBBHLECCELEDDILFADCLFBEBLFCIALGABFLGBDJKAADIKBACIKBBCBKCAEEKCBDDKCCIAKDADJKDBBDKDCDGKDDCEKEABBKEBBIKECFBKFACHKFBBDKGADHJAABEJABBIJBADBJCABDJCBECJDABGJDBCCJDCDEJEAEBJEBFCJFABFJGADIJGBCJIAADFIABDBIACCHIBACGIBBCGICADHIDALAIDBBJIEACBIFAFBIFBFBIGAEEIGBBEIGCBFHAACFHABDEHACCBHADEBHBADFHBBBJHBCECHCABHHCBCCHDAEDHEACGHEBBJHFAHEHFBBDHFCEEHGACFHGBKAHGCHDHGDBGGAAMAGABCEGACCJGBABCGBBCDGCADEGDABJGDBDHGEACCGFADCGFBOAGGACFGGBDGGGCGBFAAFBFABBEFBAJAFCADEFCBGEFDANAFDBDIFDCCIFEAMAFEBCDFFAEBFGADGFGBKAEAACCEBABFEBBNAECAKAECBEDEDAFDEDBLAEDCDDEDDBCEEADDEEBOAEECJAEFACHEFBIAEGADHDAACDDABDCDBACFDBBBBDBCDFDCACGDCBBIDCCDBDCDLADDACHDDBEDDDCHCDEAFDDEBFCDECFDDEDBGDFABCDFBDJDFCEEDGAFCDGBECCBABCCBBDBCBCBHCBDCICFAHBCFBBBCFCBHCFDFDBCABIBEABB"};
 
+                //Table Set
                 writer.WriteStartElement("ts");
                 Random random = new Random();
                 writer.WriteAttributeString("s", tables[random.Next(tables.Length)]);
                 writer.WriteEndElement();
 
-                writer.WriteStartElement("pi");
-                writer.WriteAttributeString("s", "0");
-                writer.WriteAttributeString("l", "3");
-                writer.WriteEndElement();   
-
-                writer.WriteStartElement("oi");
-                writer.WriteAttributeString("s", "0");
-                writer.WriteAttributeString("l", "3");
-                writer.WriteEndElement();  
-
                 if(mpPlayer.round == 0)
                 { 
+                    writer.WriteStartElement("rp");
+                    writer.WriteAttributeString("bid", "6008");
+                    writer.WriteEndElement();    
+
+                    writer.WriteStartElement("sg");
+                    writer.WriteAttributeString("t", "0");
+                    writer.WriteEndElement();     
+
                     /* Initally assigning teams based on the userID of the players as it is
                     an easy and predictable way to assign the teams for both sides. */
                     if(a1_User.userID < opponentUID)
                     {
+                        //Player Turn
                         mpPlayer.isKicker = true;
                         writer.WriteStartElement("pt");
                         writer.WriteAttributeString("t", "10000");
                         writer.WriteEndElement();    
                     }else
                     {
+                        //Opponent Turn
                         mpPlayer.isKicker = false;
                         writer.WriteStartElement("ot");
                         writer.WriteAttributeString("t", "10000");
                         writer.WriteEndElement();    
                     }  
-
-                    writer.WriteStartElement("nr");
-                    writer.WriteEndElement();   
-
-                    writer.WriteStartElement("sg");
-                    writer.WriteEndElement();     
                 } 
 
                 mpPlayer.round += 1;
