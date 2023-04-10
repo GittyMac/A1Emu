@@ -6,7 +6,7 @@ using NetCoreServer;
 
 public class A1_Sender { 
 
-   public void SendToUser(TcpServer sendingServer, string guid, string message){
+   public static void SendToUser(TcpServer sendingServer, string guid, string message){
       try
       {
          TcpSession session = sendingServer.FindSession(new Guid(guid));

@@ -31,4 +31,9 @@ public class FKUser
     //Buddy Lists
     public string[] rawBuddies;
     public List<FKUser> buddies;
+
+    //Chat
+    public string bitty;
+    public string dl;
+    public int lobbyID;
 }

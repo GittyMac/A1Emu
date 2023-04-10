@@ -18,8 +18,6 @@ class A1_System : TcpSession
 {
     A1_Parser a1_Parser;
 
-    A1_Sender a1_Sender;
-
     FKUser a1_User;
 
     int sessionPort = 80;
@@ -41,7 +39,6 @@ class A1_System : TcpSession
     public A1_System(TcpServer server, int port, string sqServerInput, string directory) : base(server)
     {
         a1_Parser = new A1_Parser();
-        a1_Sender = new A1_Sender();
         a1_User = new FKUser();
         sessionPort = port; sqServer = sqServerInput;
         serverDirectory = directory;
@@ -231,7 +228,7 @@ class A1_System : TcpSession
                     switch(routingString[1])
                     {
                         case "2":
-                            responses.Add(JoinChat(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5]));
+                            responses.Add(A1_Chat.JoinChat(a1_User, commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5], this.Server));
                             break;
                         default:
                             responses.Add(await JoinGame(commandInfo[1], commandInfo[2], routingString[1]));
@@ -548,6 +545,7 @@ class A1_System : TcpSession
                 a1_User.password = sqReader["p"].ToString();
                 a1_User.userID = Int32.Parse(sqReader["uID"].ToString());
                 a1_User.isOnline = Int32.Parse(sqReader["isOnline"].ToString());
+                a1_User.connectionID = this.Id.ToString();
             }
             con.Close();
         }
@@ -869,7 +867,7 @@ class A1_System : TcpSession
             conB.Close();
         }
 
-        a1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+        A1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
 
         return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
     }
@@ -960,7 +958,7 @@ class A1_System : TcpSession
                 writer1.Flush();
                 writer1.Close();
             }
-            a1_Sender.SendToUser(this.Server, buddy.connectionID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
+            A1_Sender.SendToUser(this.Server, buddy.connectionID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
             return "<notneeded/>";
         }
     }
@@ -1059,7 +1057,7 @@ class A1_System : TcpSession
                 writer1.Flush();
                 writer1.Close();
             }
-            a1_Sender.SendToUser(this.Server, buddy.connectionID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
+            A1_Sender.SendToUser(this.Server, buddy.connectionID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
 
             writer.WriteAttributeString("n", n);
 
@@ -1159,7 +1157,7 @@ class A1_System : TcpSession
 
             if (buddy.isOnline == 1)
             {
-                a1_Sender.SendToUser(this.Server, buddy.connectionID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
+                A1_Sender.SendToUser(this.Server, buddy.connectionID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
             }
 
 
@@ -1331,7 +1329,7 @@ class A1_System : TcpSession
         opponentConID = conID;
         opponentUID = int.Parse(t);
 
-        a1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+        A1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
 
         return "<notneeded/>";
     }
@@ -1378,7 +1376,7 @@ class A1_System : TcpSession
             conB.Close();
         }
 
-        a1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+        A1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
 
         string sql1 = "DELETE FROM mp_" + p + " WHERE userID=@userID";
         MySqlCommand removePlayerFromMPTable = new MySqlCommand(sql1, conB);
@@ -1400,43 +1398,9 @@ class A1_System : TcpSession
     {
         //ALL OF THIS IS PLACEHOLDER TESTING!
         //Most of this will be deleted and replaced with a better solution.
+        //* - It currently is!
 
         //TODO - Figure out the database setup for the chatrooms.
-
-        var con = new MySqlConnection(sqServer);
-        string sql = "SELECT COUNT(*) FROM user WHERE currentChat = @chatRoom";
-        MySqlCommand sqCommand = new MySqlCommand(sql, con);
-        sqCommand.Parameters.AddWithValue("@chatRoom", t);
-        con.Open();
-        Int64 userCount = (Int64) sqCommand.ExecuteScalar();
-
-        int roomCount = Convert.ToInt32(userCount) / 7 + 1;
-        Console.WriteLine(roomCount);
-
-        string sql1 = "UPDATE user SET currentChat = @chatType WHERE uID=@userID";
-        MySqlCommand sqCommand1 = new MySqlCommand(sql1, con);
-        sqCommand1.Parameters.AddWithValue("@chatType", t);
-        sqCommand1.Parameters.AddWithValue("@userID", a1_User.userID);
-        sqCommand1.ExecuteNonQuery();
-
-        if(Convert.ToInt32(userCount) % 7 == 0)
-        {
-            Console.WriteLine("New Room");
-            string sql2 = "UPDATE user SET currentRoom = @room WHERE uID=@userID";
-            MySqlCommand sqCommand2 = new MySqlCommand(sql2, con);
-            sqCommand2.Parameters.AddWithValue("@room", roomCount + 1);
-            sqCommand2.Parameters.AddWithValue("@userID", a1_User.userID);
-            sqCommand2.ExecuteNonQuery();
-        }else{
-            Console.WriteLine("Joining Room");
-            string sql2 = "UPDATE user SET currentRoom = @room WHERE uID=@userID";
-            MySqlCommand sqCommand2 = new MySqlCommand(sql2, con);
-            sqCommand2.Parameters.AddWithValue("@room", roomCount);
-            sqCommand2.Parameters.AddWithValue("@userID", a1_User.userID);
-            sqCommand2.ExecuteNonQuery();
-        }
-        
-        con.Close();
 
         //! - Placeholder, needs to be filled with all the players.
         var responseStream = new MemoryStream();
@@ -1459,7 +1423,6 @@ class A1_System : TcpSession
 
             writer.WriteStartElement("jn");
             writer.WriteAttributeString("r", "0");
-            writer.WriteAttributeString("id", roomCount.ToString());
             writer.WriteEndElement();
             
             writer.WriteEndElement();
@@ -1629,7 +1592,7 @@ class A1_System : TcpSession
                     writer.Flush();
                     writer.Close();
                 }
-                a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
+                A1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
 
                 var responseStream2 = new MemoryStream();
                 using (XmlWriter writer = XmlWriter.Create(responseStream2, settings))
@@ -1762,7 +1725,7 @@ class A1_System : TcpSession
                 writer.Flush();
                 writer.Close();
             }
-            a1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
+            A1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
 
             var responseStream2 = new MemoryStream();
             using (XmlWriter writer = XmlWriter.Create(responseStream2, settings))
@@ -2121,7 +2084,7 @@ class A1_System : TcpSession
             writer.Close();
         }
 
-        a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+        A1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
 
         return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
     }
@@ -2146,7 +2109,7 @@ class A1_System : TcpSession
             writer.Close();
         }
 
-        a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+        A1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
 
         opponentConID = "";
         opponentUID = 0;
@@ -2216,7 +2179,7 @@ class A1_System : TcpSession
             writer.Close();
         }
 
-        a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+        A1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
 
         return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
     }
@@ -2370,7 +2333,7 @@ class A1_System : TcpSession
             writer.Close();
         }
 
-        a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(opponentStream.ToArray()));
+        A1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(opponentStream.ToArray()));
 
         if(mpRival.health <= 0)
         {
@@ -2455,7 +2418,7 @@ class A1_System : TcpSession
             writer.Close();
         }
 
-        a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+        A1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
 
         return "<notneeded/>";
     }
@@ -2489,7 +2452,7 @@ class A1_System : TcpSession
             writer.Close();
         }
 
-        a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+        A1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
 
         return "<notneeded/>";
     }
@@ -2589,7 +2552,7 @@ class A1_System : TcpSession
             writer.Close();
         }
 
-        a1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+        A1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
 
         var responseStream1 = new MemoryStream();
         using (XmlWriter writer1 = XmlWriter.Create(responseStream1, settings))
@@ -3382,7 +3345,7 @@ class A1_System : TcpSession
                         writer1.Flush();
                         writer1.Close();
                     }
-                    a1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
+                    A1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
                 }
             }
         }
