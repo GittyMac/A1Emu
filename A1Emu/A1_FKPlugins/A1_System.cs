@@ -40,6 +40,7 @@ class A1_System : TcpSession
     {
         a1_Parser = new A1_Parser();
         a1_User = new FKUser();
+        A1_Chat.server = server;
         sessionPort = port; sqServer = sqServerInput;
         serverDirectory = directory;
     }
@@ -111,6 +112,11 @@ class A1_System : TcpSession
                     break;
                 case "u_inr":
                     responses.Add(InviteBuddyResponse(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5], commandInfo[6]));
+                    break;
+
+                // ----------------------------- Plugin 2 (Chat) ---------------------------- \\
+                case "se":
+                    A1_Chat.SendSpecialEvent(a1_User, command);
                     break;
 
                 // ---------------------------- Plugin 3 (Boxing) --------------------------- \\
@@ -228,7 +234,7 @@ class A1_System : TcpSession
                     switch(routingString[1])
                     {
                         case "2":
-                            responses.Add(A1_Chat.JoinChat(a1_User, commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5], this.Server));
+                            responses.Add(A1_Chat.JoinChat(a1_User, commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5]));
                             break;
                         default:
                             responses.Add(await JoinGame(commandInfo[1], commandInfo[2], routingString[1]));

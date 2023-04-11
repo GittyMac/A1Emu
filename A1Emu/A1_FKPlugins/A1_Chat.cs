@@ -8,15 +8,18 @@ using System.Text;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Linq;
+using System.Xml.Linq;
 using NetCoreServer;
 
 public class A1_Chat { 
 
+   public static TcpServer server;
    static List<FKUser[]> chatRooms_1 = new List<FKUser[]>{
     new FKUser[8]
    };
 
-   public static string JoinChat(FKUser user, string t, string dl, string f, string uid, string n, TcpServer server)
+   public static string JoinChat(FKUser user, string t, string dl, string f, string uid, string n)
    {
       //TODO - Find out how to properly handle joining, as well as tidying up this mess to avoid any awkward errors.
 
@@ -74,25 +77,23 @@ public class A1_Chat {
                      writer.WriteStartElement("h2_0");
                      writer.WriteStartElement("pj");
 
-                     for(int j = 0; j < lobby.Length; j++)
-                     {
-                        if(lobby[j] != null)
-                        {
-                           writer.WriteStartElement("pr");
-                           writer.WriteAttributeString("f", lobby[j].bitty.ToString());
-                           writer.WriteAttributeString("uid", lobby[j].userID.ToString());
-                           writer.WriteAttributeString("n", lobby[j].username.ToString());
-                           writer.WriteAttributeString("dl", lobby[j].dl.ToString());
-                           writer.WriteEndElement();
-                        }
-                     }
+                     writer.WriteStartElement("pr");
+                     writer.WriteAttributeString("f", user.bitty.ToString());
+                     writer.WriteAttributeString("uid", user.userID.ToString());
+                     writer.WriteAttributeString("n", user.username.ToString());
+                     writer.WriteAttributeString("dl", user.dl.ToString());
+                     writer.WriteEndElement();
+
+                     writer.WriteStartElement("on");
+                     writer.WriteAttributeString("id", user.userID.ToString());
+                     writer.WriteEndElement();
 
                      writer.WriteEndElement();
                      writer.WriteEndElement();
                      writer.Flush();
                      writer.Close();
                }
-               SendMessage(user, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()), server);
+               SendMessage(user, System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray()));
                found = true;
                break;
             }
@@ -108,7 +109,7 @@ public class A1_Chat {
 
    }
 
-   public static void SendMessage(FKUser user, string message, TcpServer server)
+   public static void SendMessage(FKUser user, string message)
    {
       for(int i = 0; i < chatRooms_1[user.lobbyID].Length; i++)
       {
@@ -117,6 +118,25 @@ public class A1_Chat {
             A1_Sender.SendToUser(server, chatRooms_1[user.lobbyID][i].connectionID, message);
          } 
       }
+   }
+
+   public static void SendSpecialEvent(FKUser user, string se)
+   {
+      se = se.Substring(0, se.LastIndexOf(">") + 1);
+      XDocument breakableXMLMessage = XDocument.Parse(se);
+
+      List<string> eventList = new List<string>();
+
+      foreach (var seElement in breakableXMLMessage.Descendants("se").Elements())
+      {
+         eventList.Add(seElement.ToString());
+      }
+
+      //foreach(string specialEvent in eventList)
+      //{
+         SendMessage(user, @"<h2_0>" + se + @"</h2_0>");
+      //}
+
    }
 
 }
