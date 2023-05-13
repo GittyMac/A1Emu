@@ -133,6 +133,14 @@ class A1_System : TcpSession
                     break;
                 
 
+                // ----------------------------- Plugin 6 (Pool) ---------------------------- \\
+                case "cs":
+                    responses.Add(SendXMLPacket(command, "6"));
+                    break;
+                case "er":
+                    responses.Add(EndRound(command, commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5]));
+                    break;
+
                 // ---------------------------- Plugin 7 (Galaxy) --------------------------- \\
                 case "lpv":
                     responses.Add(LoadProfileVersion());
@@ -249,6 +257,9 @@ class A1_System : TcpSession
                             break;
                         case "5":
                             responses.Add(ShotParameters(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5]));
+                            break;
+                        case "6":
+                            responses.Add(SendXMLPacket(command, "6"));
                             break;
                     }
                     break;
@@ -2025,6 +2036,95 @@ class A1_System : TcpSession
                 }
             }
 
+            if(plugin == "6")
+            {   
+                if(mpPlayer.round < 10)
+                {
+                    //writer.WriteStartElement("nr");
+                    //writer.WriteEndElement();
+
+                    if(mpPlayer.round == 0)
+                    {
+                        writer.WriteStartElement("sg");
+                        writer.WriteEndElement();              
+                    }
+
+                    if(mpPlayer.round == 0 || mpPlayer.round == 4)
+                    { 
+                        writer.WriteStartElement("nt");
+                        if(mpPlayer.round == 0)
+                        {
+                            /* Initally assigning teams based on the userID of the players as it is
+                            an easy and predictable way to assign the teams for both sides. */
+                            if(a1_User.userID < opponentUID)
+                            {
+                                mpPlayer.isKicker = true;
+                                writer.WriteAttributeString("u", a1_User.userID.ToString());
+                            }else
+                            {
+                                mpPlayer.isKicker = false;
+                                writer.WriteAttributeString("u", opponentUID.ToString());
+                            }
+                        }else{
+                            //Swaps teams for second round.
+                            switch(mpPlayer.isKicker)
+                            {
+                                case false:
+                                    writer.WriteAttributeString("c", "1");
+                                    break;
+                                case true:
+                                    writer.WriteAttributeString("c", "0");
+                                    break;
+                            }
+                        }
+                        writer.WriteEndElement();
+                    }
+
+                    mpPlayer.round += 1;
+                }else
+                {
+                    //Get the player's score.
+                    string sql3 = "SELECT score FROM mp_6 WHERE userID=@userID";
+                    MySqlCommand getPlayerScore = new MySqlCommand(sql3, con);
+                    getPlayerScore.Parameters.AddWithValue("@userID", a1_User.userID);
+
+                    MySqlCommand getOpponentScore = new MySqlCommand(sql3, con);
+                    getOpponentScore.Parameters.AddWithValue("@userID", opponentUID);
+
+                    con.Open();
+                    using (MySqlDataReader sqReader = getPlayerScore.ExecuteReader())
+                    {
+                        while (sqReader.Read())
+                        {
+                            mpPlayer.score = int.Parse(sqReader["score"].ToString());
+                        }
+                    }
+                    using (MySqlDataReader sqReader = getOpponentScore.ExecuteReader())
+                    {
+                        while (sqReader.Read())
+                        {
+                            mpRival.score = int.Parse(sqReader["score"].ToString());
+                        }
+                    }
+                    con.Close();
+
+                    writer.WriteStartElement("go");
+                    //The result attribute seems to determine the coin distribution.
+                    if(mpPlayer.score > mpRival.score)
+                    {
+                        writer.WriteAttributeString("r", "6");
+                    }else if(mpPlayer.score < mpRival.score)
+                    {
+                        writer.WriteAttributeString("r", "7");
+                    }else
+                    {
+                       writer.WriteAttributeString("r", "8"); 
+                    }
+                
+                    writer.WriteEndElement();      
+                }
+            }
+
             writer.WriteEndElement();
             writer.Flush();
             writer.Close();
@@ -2580,6 +2680,72 @@ class A1_System : TcpSession
 
         return System.Text.ASCIIEncoding.ASCII.GetString(responseStream1.ToArray());
     }
+
+    // -------------------------------------------------------------------------- \\
+    //                              Plugin 6 - Pool                               \\
+    // -------------------------------------------------------------------------- \\
+
+    string EndRound(string command, string u, string s, string so, string st, string p)
+    {
+        var responseStream = new MemoryStream();
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.OmitXmlDeclaration = true;
+        settings.ConformanceLevel = ConformanceLevel.Fragment;
+        settings.Encoding = Encoding.ASCII;
+        using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+        {
+            writer.WriteStartElement("h6_0");
+
+            //TODO - Handle the pockets, there seems to be 3 variables related to it in the long command, along with each ball.
+            //SCRATCH - s="1", leads to game over, but it still adds points to the player...?
+            if(s.Equals("1"))
+            {
+                writer.WriteStartElement("go");
+                //The result attribute seems to determine the coin distribution.
+                if(mpPlayer.score < mpRival.score)
+                {
+                    writer.WriteAttributeString("r", "6");
+                }else if(mpPlayer.score > mpRival.score)
+                {
+                    writer.WriteAttributeString("r", "7");
+                }else
+                {
+                    writer.WriteAttributeString("r", "8"); 
+                }
+            
+                writer.WriteEndElement(); 
+            }
+
+            writer.WriteStartElement("nt");
+            switch(mpPlayer.isKicker)
+            {
+                case false:
+                    mpPlayer.isKicker = true;
+                    writer.WriteAttributeString("u", a1_User.userID.ToString());
+                    break;
+                case true:
+                    mpPlayer.isKicker = false;
+                    writer.WriteAttributeString("u", opponentUID.ToString());
+                    break;
+            }
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Close();
+        }
+
+        A1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+
+        return "<notneeded/>";
+    }
+
+    string SendXMLPacket(string command, string plugin)
+    {
+        A1_Sender.SendToUser(this.Server, opponentConID, "<h" + plugin + "_0>" + command.Substring(0, command.LastIndexOf(">") + 1) + "</h" + plugin + "_0>");
+
+        return "<notneeded/>";
+    }
+
 
     // -------------------------------------------------------------------------- \\
     //                              Plugin 7 - Galaxy                             \\
