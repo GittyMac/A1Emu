@@ -2,6 +2,7 @@
 using System.IO;
 using System.Reflection;
 using MySqlConnector;
+using A1Emu.A1.Servers;
 
 class Program
 {
