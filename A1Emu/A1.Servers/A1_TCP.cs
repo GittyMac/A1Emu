@@ -12,6 +12,7 @@ using MySqlConnector;
 using NetCoreServer;
 using A1Emu.A1.Utils;
 using A1Emu.A1.Plugins;
+using A1Emu.A1.Objects;
 
 namespace A1Emu.A1.Servers
 {
