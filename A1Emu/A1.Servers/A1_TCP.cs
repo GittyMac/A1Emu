@@ -1473,6 +1473,25 @@ namespace A1Emu.A1.Servers
         // -------------------------------------------------------------------------- \\
         //                            Multiplayer (Generic)                           \\
         // -------------------------------------------------------------------------- \\
+        void SendGameOver(XmlWriter writer)
+        {
+            writer.WriteStartElement("go");
+            //The result attribute seems to determine the coin distribution.
+            if (mpPlayer.score > mpRival.score)
+            {
+                writer.WriteAttributeString("r", "6");
+            }
+            else if (mpPlayer.score < mpRival.score)
+            {
+                writer.WriteAttributeString("r", "7");
+            }
+            else
+            {
+                writer.WriteAttributeString("r", "8");
+            }
+
+            writer.WriteEndElement();
+        }
 
         async Task<String> JoinGame(string pr, string c, string plugin)
         {
@@ -2037,23 +2056,7 @@ namespace A1Emu.A1.Servers
                             }
                         }
                         con.Close();
-
-                        writer.WriteStartElement("go");
-                        //The result attribute seems to determine the coin distribution.
-                        if (mpPlayer.score > mpRival.score)
-                        {
-                            writer.WriteAttributeString("r", "6");
-                        }
-                        else if (mpPlayer.score < mpRival.score)
-                        {
-                            writer.WriteAttributeString("r", "7");
-                        }
-                        else
-                        {
-                            writer.WriteAttributeString("r", "8");
-                        }
-
-                        writer.WriteEndElement();
+                        SendGameOver(writer);
                     }
                 }
 
@@ -2132,23 +2135,7 @@ namespace A1Emu.A1.Servers
                             }
                         }
                         con.Close();
-
-                        writer.WriteStartElement("go");
-                        //The result attribute seems to determine the coin distribution.
-                        if (mpPlayer.score > mpRival.score)
-                        {
-                            writer.WriteAttributeString("r", "6");
-                        }
-                        else if (mpPlayer.score < mpRival.score)
-                        {
-                            writer.WriteAttributeString("r", "7");
-                        }
-                        else
-                        {
-                            writer.WriteAttributeString("r", "8");
-                        }
-
-                        writer.WriteEndElement();
+                        SendGameOver(writer);
                     }
                 }
 
@@ -2448,22 +2435,7 @@ namespace A1Emu.A1.Servers
                         writer.WriteAttributeString("s", mpPlayer.score.ToString());
                         writer.WriteEndElement();
 
-                        writer.WriteStartElement("go");
-                        //The result attribute seems to determine the coin distribution.
-                        if (mpPlayer.score < mpRival.score)
-                        {
-                            writer.WriteAttributeString("r", "6");
-                        }
-                        else if (mpPlayer.score > mpRival.score)
-                        {
-                            writer.WriteAttributeString("r", "7");
-                        }
-                        else
-                        {
-                            writer.WriteAttributeString("r", "8");
-                        }
-
-                        writer.WriteEndElement();
+                        SendGameOver(writer);
                     }
                 }
 
@@ -2501,22 +2473,7 @@ namespace A1Emu.A1.Servers
                         writer.WriteAttributeString("s", mpRival.score.ToString());
                         writer.WriteEndElement();
 
-                        writer.WriteStartElement("go");
-                        //The result attribute seems to determine the coin distribution.
-                        if (mpPlayer.score > mpRival.score)
-                        {
-                            writer.WriteAttributeString("r", "6");
-                        }
-                        else if (mpPlayer.score < mpRival.score)
-                        {
-                            writer.WriteAttributeString("r", "7");
-                        }
-                        else
-                        {
-                            writer.WriteAttributeString("r", "8");
-                        }
-
-                        writer.WriteEndElement();
+                        SendGameOver(writer);
                     }
 
                     writer.WriteEndElement();
@@ -2736,22 +2693,7 @@ namespace A1Emu.A1.Servers
                 //SCRATCH - s="1", leads to game over, but it still adds points to the player...?
                 if (s.Equals("1"))
                 {
-                    writer.WriteStartElement("go");
-                    //The result attribute seems to determine the coin distribution.
-                    if (mpPlayer.score < mpRival.score)
-                    {
-                        writer.WriteAttributeString("r", "6");
-                    }
-                    else if (mpPlayer.score > mpRival.score)
-                    {
-                        writer.WriteAttributeString("r", "7");
-                    }
-                    else
-                    {
-                        writer.WriteAttributeString("r", "8");
-                    }
-
-                    writer.WriteEndElement();
+                    SendGameOver(writer);
                 }
 
                 writer.WriteStartElement("nt");
