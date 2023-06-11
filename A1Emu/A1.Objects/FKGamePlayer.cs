@@ -12,5 +12,8 @@ namespace A1Emu.A1.Objects
 
         //Plugin 5
         public bool isKicker = false;
+
+        //Plugin 6
+        public int typeOfBall = 0;
     }
 }

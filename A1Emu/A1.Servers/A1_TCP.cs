@@ -35,7 +35,7 @@ namespace A1Emu.A1.Servers
         string opponentConID = "";
         int opponentUID = 0;
 
-        FKGamePlayer mpPlayer;
+        public FKGamePlayer mpPlayer;
         FKGamePlayer mpRival;
 
         public A1_TCP(TcpServer server, int port, string sqServerInput, string directory) : base(server)
@@ -1760,6 +1760,10 @@ namespace A1Emu.A1.Servers
                 opponentConID = conID;
                 opponentUID = challenger;
 
+                A1_TCP session = (A1_TCP)this.Server.FindSession(new Guid(opponentConID));
+                session.mpPlayer = new FKGamePlayer();
+                mpRival = session.mpPlayer;
+
                 var responseStream1 = new MemoryStream();
                 using (XmlWriter writer = XmlWriter.Create(responseStream1, settings))
                 {
@@ -2696,6 +2700,41 @@ namespace A1Emu.A1.Servers
                     SendGameOver(writer);
                 }
 
+                //TODO - Fix the turn switching not allowing future shots
+
+                //Sets the kind of ball on first pocket.
+                if(mpPlayer.typeOfBall == 0)
+                {
+                    if(int.Parse(st) > 0 && int.Parse(so) == 0)
+                    {
+                        mpPlayer.typeOfBall = 1; //1 is stripes.
+                        mpRival.typeOfBall = 2; //2 is solids.
+                    }else if(int.Parse(so) > 0 && int.Parse(st) == 0)
+                    {
+                        mpPlayer.typeOfBall = 2; //2 is solids.
+                        mpRival.typeOfBall = 1; //1 is stripes.
+                    }
+                }
+
+                //Scores the pockets based on the kind of ball.
+                if(mpPlayer.typeOfBall == 1)
+                {
+                    mpPlayer.score += int.Parse(st) * 500;
+                    mpRival.score += int.Parse(so) * 500;
+                }else if(mpPlayer.typeOfBall == 2)
+                {
+                    mpPlayer.score += int.Parse(so) * 500;
+                    mpRival.score += int.Parse(st) * 500;
+                }
+
+                writer.WriteStartElement("ps");
+                writer.WriteAttributeString("s", mpRival.score.ToString());
+                writer.WriteEndElement();
+
+                writer.WriteStartElement("os");
+                writer.WriteAttributeString("s", mpPlayer.score.ToString());
+                writer.WriteEndElement();
+
                 writer.WriteStartElement("nt");
                 switch (mpPlayer.isKicker)
                 {
@@ -2716,7 +2755,24 @@ namespace A1Emu.A1.Servers
 
             A1_Sender.SendToUser(this.Server, opponentConID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
 
-            return "<notneeded/>";
+            var responseStream2 = new MemoryStream();
+            using (XmlWriter writer = XmlWriter.Create(responseStream2, settings))
+            {
+                writer.WriteStartElement("h6_0");
+
+                writer.WriteStartElement("os");
+                writer.WriteAttributeString("s", mpRival.score.ToString());
+                writer.WriteEndElement();
+
+                writer.WriteStartElement("ps");
+                writer.WriteAttributeString("s", mpPlayer.score.ToString());
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+                writer.Flush();
+                writer.Close();
+            }
+
+            return System.Text.ASCIIEncoding.ASCII.GetString(responseStream2.ToArray());
         }
 
         string SendXMLPacket(string command, string plugin)
