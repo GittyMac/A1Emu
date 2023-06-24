@@ -15,5 +15,6 @@ namespace A1Emu.A1.Objects
 
         //Plugin 6
         public int typeOfBall = 0;
+        public bool started = false;
     }
 }

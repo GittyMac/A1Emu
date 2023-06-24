@@ -2087,11 +2087,13 @@ namespace A1Emu.A1.Servers
                                 if (a1_User.userID < opponentUID)
                                 {
                                     mpPlayer.isKicker = true;
+                                    mpRival.started = true;
                                     writer.WriteAttributeString("u", a1_User.userID.ToString());
                                 }
                                 else
                                 {
                                     mpPlayer.isKicker = false;
+                                    mpPlayer.started = true;
                                     writer.WriteAttributeString("u", opponentUID.ToString());
                                 }
                             }
@@ -2684,6 +2686,7 @@ namespace A1Emu.A1.Servers
 
         string EndRound(string command, string bid, string u, string s, string so, string st, string p)
         {
+            bool isContinuing = false;
             var responseStream = new MemoryStream();
             XmlWriterSettings settings = new XmlWriterSettings();
             settings.OmitXmlDeclaration = true;
@@ -2694,16 +2697,15 @@ namespace A1Emu.A1.Servers
                 writer.WriteStartElement("h6_0");
 
                 //TODO - Handle the pockets, there seems to be 3 variables related to it in the long command, along with each ball.
-                //SCRATCH - s="1", leads to game over, but it still adds points to the player...?
-                if (s.Equals("1"))
+                //! TODO - FIX THE TURN SWITCHING! Add the rest of the continue conditions so the client wont conflict with the server in unhandled cases.
+                //If the player for some reason scratches on the first hit.
+                if (s.Equals("1") && !mpPlayer.started)
                 {
                     SendGameOver(writer);
                 }
 
-                //TODO - Fix the turn switching not allowing future shots
-
-                //Sets the kind of ball on first pocket.
-                if(mpPlayer.typeOfBall == 0)
+                //Sets the kind of ball on first (not break) pocket.
+                if(mpPlayer.typeOfBall == 0 && mpPlayer.started)
                 {
                     if(int.Parse(st) > 0 && int.Parse(so) == 0)
                     {
@@ -2721,33 +2723,55 @@ namespace A1Emu.A1.Servers
                 {
                     mpPlayer.score += int.Parse(st) * 500;
                     mpRival.score += int.Parse(so) * 500;
+                    if(int.Parse(so) == 0 && int.Parse(st) > 0)
+                    {
+                        isContinuing = true;
+                    }
                 }else if(mpPlayer.typeOfBall == 2)
                 {
                     mpPlayer.score += int.Parse(so) * 500;
                     mpRival.score += int.Parse(st) * 500;
+                    if(int.Parse(st) == 0 && int.Parse(so) > 0)
+                    {
+                        isContinuing = true;
+                    }
                 }
 
-                writer.WriteStartElement("ps");
-                writer.WriteAttributeString("s", mpRival.score.ToString());
-                writer.WriteEndElement();
-
-                writer.WriteStartElement("os");
-                writer.WriteAttributeString("s", mpPlayer.score.ToString());
-                writer.WriteEndElement();
-
-                writer.WriteStartElement("nt");
-                switch (mpPlayer.isKicker)
+                if(!mpPlayer.started)
                 {
-                    case false:
-                        mpPlayer.isKicker = true;
-                        writer.WriteAttributeString("u", a1_User.userID.ToString());
-                        break;
-                    case true:
-                        mpPlayer.isKicker = false;
-                        writer.WriteAttributeString("u", opponentUID.ToString());
-                        break;
+                    mpPlayer.started = true;
                 }
-                writer.WriteEndElement();
+
+                //writer.WriteStartElement("ps");
+                //writer.WriteAttributeString("s", mpRival.score.ToString());
+                //writer.WriteEndElement();
+
+                //writer.WriteStartElement("os");
+                //writer.WriteAttributeString("s", mpPlayer.score.ToString());
+                //writer.WriteEndElement();
+
+                if(!isContinuing)
+                {
+                    writer.WriteStartElement("nt");
+                    switch (mpPlayer.isKicker)
+                    {
+                        case false:
+                            mpPlayer.isKicker = true;
+                            writer.WriteAttributeString("u", a1_User.userID.ToString());
+                            break;
+                        case true:
+                            mpPlayer.isKicker = false;
+                            writer.WriteAttributeString("u", opponentUID.ToString());
+                            break;
+                    }
+                    writer.WriteEndElement();
+                }else
+                {
+                    writer.WriteStartElement("nt");
+                    writer.WriteAttributeString("u", a1_User.userID.ToString());
+                    writer.WriteEndElement();
+                }
+
                 writer.WriteEndElement();
                 writer.Flush();
                 writer.Close();
@@ -2760,11 +2784,18 @@ namespace A1Emu.A1.Servers
             {
                 writer.WriteStartElement("h6_0");
 
-                writer.WriteStartElement("os");
+                if(isContinuing)
+                {
+                    writer.WriteStartElement("nt");
+                    writer.WriteAttributeString("u", a1_User.userID.ToString());
+                    writer.WriteEndElement();
+                }
+
+                writer.WriteStartElement("ps");
                 writer.WriteAttributeString("s", mpRival.score.ToString());
                 writer.WriteEndElement();
 
-                writer.WriteStartElement("ps");
+                writer.WriteStartElement("os");
                 writer.WriteAttributeString("s", mpPlayer.score.ToString());
                 writer.WriteEndElement();
                 writer.WriteEndElement();
