@@ -1,3 +1,6 @@
+> [!CAUTION]
+> This is an incomplete project! Please do not expect a complete or secure server experience with this.
+
 # A1Emu
 An open source recreation of the ArkONE servers used for the 2007 game, U.B. Funkeys.
 
