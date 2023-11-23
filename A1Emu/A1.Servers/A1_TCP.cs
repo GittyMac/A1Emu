@@ -50,7 +50,14 @@ namespace A1Emu.A1.Servers
         protected override async void OnReceived(byte[] buffer, long offset, long size)
         {
             string message = Encoding.ASCII.GetString(buffer, (int)offset, (int)size - 1);
-            Console.WriteLine("[0 - System - " + this.Id + "] Recieved: " + message);
+            if(a1_User != null && a1_User.username != "")
+            {
+                Console.WriteLine("[0 - System - " + this.Id + " - " + a1_User.username + "] Recieved: " + message);
+            }else
+            {
+              Console.WriteLine("[0 - System - " + this.Id + " - GUESTUSER] Recieved: " + message);
+            }
+
 
             List<string> responses = new List<string>();
 
@@ -257,13 +264,13 @@ namespace A1Emu.A1.Servers
                     case "sp":
                         switch (routingString[1])
                         {
-                            case "7":
+                            case "7": //SaveProfile (Galaxy)
                                 responses.Add(SaveProfile(commandInfo[1]));
                                 break;
-                            case "5":
+                            case "5": //ShotParameters (Soccer)
                                 responses.Add(ShotParameters(commandInfo[1], commandInfo[2], commandInfo[3], commandInfo[4], commandInfo[5]));
                                 break;
-                            case "6":
+                            case "6": //SetPartnetHit (Pool)
                                 responses.Add(SendXMLPacket(command, "6"));
                                 break;
                         }
@@ -1361,54 +1368,58 @@ namespace A1Emu.A1.Servers
 
         string InviteBuddyResponse(string gid, string bid, string p, string a, string t, string f)
         {
-            var responseStream = new MemoryStream();
-            XmlWriterSettings settings = new XmlWriterSettings();
-            settings.OmitXmlDeclaration = true;
-            settings.ConformanceLevel = ConformanceLevel.Fragment;
-            settings.Encoding = Encoding.ASCII;
-            using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
+            //Avoids strange gid 32 error.
+            if(gid != "32")
             {
-                writer.WriteStartElement("u_inr");
-
-                writer.WriteAttributeString("r", "0");
-                writer.WriteAttributeString("f", f);
-                writer.WriteAttributeString("t", t);
-                writer.WriteAttributeString("a", a);
-                writer.WriteAttributeString("p", p);
-
-                writer.WriteEndElement();
-                writer.Flush();
-                writer.Close();
-            }
-
-            string conID = "";
-
-            var conB = new MySqlConnection(sqServer);
-            string sqlB = "SELECT * FROM user WHERE uID=@userID";
-            MySqlCommand getConnectionID = new MySqlCommand(sqlB, conB);
-            getConnectionID.Parameters.AddWithValue("@userID", f);
-            conB.Open();
-            using (MySqlDataReader sqReader = getConnectionID.ExecuteReader())
-            {
-                while (sqReader.Read())
+                var responseStream = new MemoryStream();
+                XmlWriterSettings settings = new XmlWriterSettings();
+                settings.OmitXmlDeclaration = true;
+                settings.ConformanceLevel = ConformanceLevel.Fragment;
+                settings.Encoding = Encoding.ASCII;
+                using (XmlWriter writer = XmlWriter.Create(responseStream, settings))
                 {
-                    if (Convert.ToInt32(sqReader["isOnline"].ToString()) == 1)
-                    {
-                        conID = sqReader["connectionID"].ToString();
-                    }
+                    writer.WriteStartElement("u_inr");
+
+                    writer.WriteAttributeString("r", "0");
+                    writer.WriteAttributeString("f", f);
+                    writer.WriteAttributeString("t", t);
+                    writer.WriteAttributeString("a", a);
+                    writer.WriteAttributeString("p", p);
+
+                    writer.WriteEndElement();
+                    writer.Flush();
+                    writer.Close();
                 }
 
+                string conID = "";
+
+                var conB = new MySqlConnection(sqServer);
+                string sqlB = "SELECT * FROM user WHERE uID=@userID";
+                MySqlCommand getConnectionID = new MySqlCommand(sqlB, conB);
+                getConnectionID.Parameters.AddWithValue("@userID", f);
+                conB.Open();
+                using (MySqlDataReader sqReader = getConnectionID.ExecuteReader())
+                {
+                    while (sqReader.Read())
+                    {
+                        if (Convert.ToInt32(sqReader["isOnline"].ToString()) == 1)
+                        {
+                            conID = sqReader["connectionID"].ToString();
+                        }
+                    }
+
+                    conB.Close();
+                }
+
+                A1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
+
+                string sql1 = "DELETE FROM mp_" + p + " WHERE userID=@userID";
+                MySqlCommand removePlayerFromMPTable = new MySqlCommand(sql1, conB);
+                removePlayerFromMPTable.Parameters.AddWithValue("@userID", a1_User.userID);
+                conB.Open();
+                removePlayerFromMPTable.ExecuteNonQuery();
                 conB.Close();
             }
-
-            A1_Sender.SendToUser(this.Server, conID, System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray()));
-
-            string sql1 = "DELETE FROM mp_" + p + " WHERE userID=@userID";
-            MySqlCommand removePlayerFromMPTable = new MySqlCommand(sql1, conB);
-            removePlayerFromMPTable.Parameters.AddWithValue("@userID", a1_User.userID);
-            conB.Open();
-            removePlayerFromMPTable.ExecuteNonQuery();
-            conB.Close();
 
             return "<notneeded/>";
         }
@@ -2696,9 +2707,12 @@ namespace A1Emu.A1.Servers
             {
                 writer.WriteStartElement("h6_0");
 
+                //It appears that both players have their own end round packet, even if it's not their turn.
                 //TODO - Handle the pockets, there seems to be 3 variables related to it in the long command, along with each ball.
                 //! TODO - FIX THE TURN SWITCHING! Add the rest of the continue conditions so the client wont conflict with the server in unhandled cases.
+                
                 //If the player for some reason scratches on the first hit.
+                //? It might be if they didn't pocket a ball.
                 if (s.Equals("1") && !mpPlayer.started)
                 {
                     SendGameOver(writer);
@@ -2737,6 +2751,11 @@ namespace A1Emu.A1.Servers
                     }
                 }
 
+                if(s != "0")
+                {
+                    isContinuing = false; //Opponent gets free shot if scratch.
+                }
+
                 if(!mpPlayer.started)
                 {
                     mpPlayer.started = true;
@@ -2768,7 +2787,7 @@ namespace A1Emu.A1.Servers
                 }else
                 {
                     writer.WriteStartElement("nt");
-                    writer.WriteAttributeString("u", a1_User.userID.ToString());
+                    writer.WriteAttributeString("u", opponentUID.ToString());
                     writer.WriteEndElement();
                 }
 
@@ -2787,7 +2806,7 @@ namespace A1Emu.A1.Servers
                 if(isContinuing)
                 {
                     writer.WriteStartElement("nt");
-                    writer.WriteAttributeString("u", a1_User.userID.ToString());
+                    writer.WriteAttributeString("u", opponentUID.ToString());
                     writer.WriteEndElement();
                 }
 
