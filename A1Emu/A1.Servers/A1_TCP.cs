@@ -572,8 +572,8 @@ namespace A1Emu.A1.Servers
                 {
                     a1_User.username = sqReader["u"].ToString();
                     a1_User.password = sqReader["p"].ToString();
-                    a1_User.userID = Int32.Parse(sqReader["uID"].ToString());
-                    a1_User.isOnline = Int32.Parse(sqReader["isOnline"].ToString());
+                    int.TryParse(sqReader["uID"].ToString(), out a1_User.userID);
+                    int.TryParse(sqReader["isOnline"].ToString(), out a1_User.isOnline);
                     a1_User.connectionID = this.Id.ToString();
                 }
                 con.Close();
@@ -3078,67 +3078,75 @@ namespace A1Emu.A1.Servers
                 writer.WriteStartElement("gua");
 
                 XmlDocument profile = new XmlDocument();
-                profile.Load(serverDirectory + a1_User.username + @"/profile");
-
-                var familiarNodes = profile.SelectNodes("/profile/trunk/familiars/familiar");
-                foreach (XmlNode node in familiarNodes)
-                {
-                    writer.WriteStartElement("f");
-                    writer.WriteAttributeString("id", node.Attributes["id"].Value);
-                    writer.WriteAttributeString("p", node.Attributes["start"].Value);
-                    writer.WriteAttributeString("c", (int.Parse(node.Attributes["time"].Value) / 60).ToString());
+                if(!File.Exists(serverDirectory + a1_User.username + @"/profile")){
                     writer.WriteEndElement();
-                }
+                    writer.WriteEndElement();
+                    writer.Flush();
+                    writer.Close();
+                    
+                }else{
+                    profile.Load(serverDirectory + a1_User.username + @"/profile");
 
-                string sql = "SELECT * FROM user WHERE uID=@uid";
-
-                string jammersTotal = "";
-                string jammersUsed = "";
-
-                MySqlCommand getJammerInfo = new MySqlCommand(sql, con);
-                getJammerInfo.Parameters.AddWithValue("@uid", a1_User.userID);
-                con.Open();
-                using (MySqlDataReader sqReader = getJammerInfo.ExecuteReader())
-                {
-                    while (sqReader.Read())
+                    var familiarNodes = profile.SelectNodes("/profile/trunk/familiars/familiar");
+                    foreach (XmlNode node in familiarNodes)
                     {
-                        jammersTotal = sqReader["jammersTotal"].ToString();
-                        jammersUsed = sqReader["jammersUsed"].ToString();
+                        writer.WriteStartElement("f");
+                        writer.WriteAttributeString("id", node.Attributes["id"].Value);
+                        writer.WriteAttributeString("p", node.Attributes["start"].Value);
+                        writer.WriteAttributeString("c", (int.Parse(node.Attributes["time"].Value) / 60).ToString());
+                        writer.WriteEndElement();
                     }
-                    con.Close();
-                }
 
-                if (jammersTotal == "")
-                {
-                    jammersTotal = "0";
-                }
+                    string sql = "SELECT * FROM user WHERE uID=@uid";
 
-                if (jammersUsed == "")
-                {
-                    jammersUsed = "0";
-                }
+                    string jammersTotal = "";
+                    string jammersUsed = "";
 
-                if (int.Parse(jammersTotal) > 0)
-                {
-                    writer.WriteStartElement("j");
-                    writer.WriteAttributeString("id", "80014a");
-                    writer.WriteAttributeString("p", jammersUsed);
-                    writer.WriteAttributeString("c", jammersTotal);
+                    MySqlCommand getJammerInfo = new MySqlCommand(sql, con);
+                    getJammerInfo.Parameters.AddWithValue("@uid", a1_User.userID);
+                    con.Open();
+                    using (MySqlDataReader sqReader = getJammerInfo.ExecuteReader())
+                    {
+                        while (sqReader.Read())
+                        {
+                            jammersTotal = sqReader["jammersTotal"].ToString();
+                            jammersUsed = sqReader["jammersUsed"].ToString();
+                        }
+                        con.Close();
+                    }
+
+                    if (jammersTotal == "")
+                    {
+                        jammersTotal = "0";
+                    }
+
+                    if (jammersUsed == "")
+                    {
+                        jammersUsed = "0";
+                    }
+
+                    if (int.Parse(jammersTotal) > 0)
+                    {
+                        writer.WriteStartElement("j");
+                        writer.WriteAttributeString("id", "80014a");
+                        writer.WriteAttributeString("p", jammersUsed);
+                        writer.WriteAttributeString("c", jammersTotal);
+                        writer.WriteEndElement();
+                    }
+
+                    var moodNodes = profile.SelectNodes("/profile/trunk/moods/mood");
+                    foreach (XmlNode node in moodNodes)
+                    {
+                        writer.WriteStartElement("m");
+                        writer.WriteAttributeString("id", node.Attributes["id"].Value);
+                        writer.WriteEndElement();
+                    }
+
                     writer.WriteEndElement();
-                }
-
-                var moodNodes = profile.SelectNodes("/profile/trunk/moods/mood");
-                foreach (XmlNode node in moodNodes)
-                {
-                    writer.WriteStartElement("m");
-                    writer.WriteAttributeString("id", node.Attributes["id"].Value);
                     writer.WriteEndElement();
+                    writer.Flush();
+                    writer.Close();
                 }
-
-                writer.WriteEndElement();
-                writer.WriteEndElement();
-                writer.Flush();
-                writer.Close();
             }
             return System.Text.ASCIIEncoding.ASCII.GetString(responseStream.ToArray());
         }
