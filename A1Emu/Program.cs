@@ -91,7 +91,8 @@ class Program
 
         if (!File.Exists(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/config"))
         {
-            Console.WriteLine("[ERROR] A1Emu did not find a config file in the application's directory.");
+            Console.WriteLine("[ERROR] A1Emu did not find a config file in the application's directory. Please add one and relaunch.");
+            System.Environment.Exit(1);
         }
 
         try
@@ -122,6 +123,17 @@ class Program
         }
 
         var con = new MySqlConnection(sqServer);
+
+        try
+        {
+            con.Open();
+            con.Close();
+        }
+        catch (MySqlException ex)
+        {
+            Console.WriteLine("[ERROR] A1Emu could not connect to the SQL server. Exception: " + ex.Message);
+            System.Environment.Exit(1);
+        }
 
         //TODO - Generate a SQL DB. (Will probably be an external script or a manual README instruction)
 
